@@ -1,4 +1,5 @@
 import MapView from "../components/MapView";
+import AIBox from "../components/AIBox";
 
 export default function Dashboard() {
   return (
@@ -23,6 +24,9 @@ export default function Dashboard() {
       <main className="flex-1 relative">
         <MapView />
       </main>
+
+      {/* ✅ AI Assistant box */}
+      <AIBox />
     </div>
   );
 }
