@@ -1,3 +1,4 @@
+// frontend/src/pages/Dashboard.jsx
 import MapView from "../components/MapView";
 import AIBox from "../components/AIBox";
 

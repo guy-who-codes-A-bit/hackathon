@@ -1,3 +1,4 @@
+// frontend/src/components/MapView.jsx
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Map, Marker, Popup } from "react-map-gl";
 import { useEffect, useState } from "react";

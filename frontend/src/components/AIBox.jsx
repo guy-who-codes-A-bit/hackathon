@@ -1,3 +1,4 @@
+// frontend/src/components/AIBox.jsx
 import { useState } from "react";
 import OpenAI from "openai";
 
