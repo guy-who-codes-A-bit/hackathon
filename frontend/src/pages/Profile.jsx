@@ -1,6 +1,9 @@
 import BottomNav from "../components/BottomNav";
+import { useNavigate } from "react-router-dom";
 
 export default function Profile() {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between pb-24">
 
@@ -31,7 +34,7 @@ export default function Profile() {
 
           {/* Buttons */}
           <div className="flex gap-4 mt-2">
-            <button className="bg-[#EF7D7D] px-6 py-2 text-white rounded-xl text-sm">
+            <button onClick={() => navigate("/")} className="bg-[#EF7D7D] px-6 py-2 text-white rounded-xl text-sm">
               log out
             </button>
 
