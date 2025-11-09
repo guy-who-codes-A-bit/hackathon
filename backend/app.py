@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 from models import db, User, Restaurant, Claim
 from utils import send_mail, refresh_daily_tokens
 import random, string, requests
+from datetime import datetime, timedelta
+import threading
 
 app = Flask(__name__)
 CORS(app)
@@ -53,10 +55,30 @@ def login():
             "success": True,
             "user_id": user.id,  # 👈 include this
             "name": user.name,
+            "email": user.email,
+            "id": user.id,
             "tokens": user.tokens,
             "claims_today": user.claims_today,
         }
     )
+
+
+def increment_daily_tokens():
+    users = User.query.all()
+    for user in users:
+        user.tokens += 1
+    db.session.commit()
+    print("✅ All users' tokens incremented")
+
+
+def schedule_next_increment():
+    now = datetime.now()
+    # Next midnight
+    next_run = (now + timedelta(days=1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    delay = (next_run - now).total_seconds()
+    threading.Timer(delay, increment_daily_tokens).start()
 
 
 # ---------------- PASSWORD RESET ---------------- #
@@ -380,4 +402,5 @@ def verify_claim():
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
+        increment_daily_tokens()
     app.run(debug=True)

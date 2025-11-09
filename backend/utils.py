@@ -31,10 +31,10 @@ def send_mail(to_address: str, subject: str, body: str):
 
 
 def refresh_daily_tokens(user):
-    """Give +1 token if it's a new day (max 2 total)."""
+    """Give +1 token if it's a new day (no max limit)."""
     today = date.today()
     if user.last_token_date != today:
-        user.tokens = min(user.tokens + 1, 2)
+        user.tokens += 1
         user.last_token_date = today
         user.claims_today = 0
         db.session.commit()

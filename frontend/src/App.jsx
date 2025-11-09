@@ -9,6 +9,7 @@ import ForgetPassword from "./pages/ForgotPassword";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import Maps from "./pages/Maps";
+import EditProfile from "./pages/EditProfile"; //NEW !!!! EDIT PROFILE
 import RestaurantSignup from "./pages/restaurant/RestaurantSignup";
 import RestaurantLogin from "./pages/restaurant/RestaurantLogin";
 import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard";
@@ -28,6 +29,7 @@ function App() {
           <Route path="/forgetpassword" element={<ForgetPassword />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/maps" element={<Maps />} />
+          <Route path="/profile/edit" element={<EditProfile />} />
           <Route path="/restaurant/signup" element={<RestaurantSignup />} />
           <Route path="/restaurant/login" element={<RestaurantLogin />} />
           <Route

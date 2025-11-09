@@ -37,7 +37,7 @@ export default function Login() {
             </label>
             <input
               type="email"
-              defaultValue="contact@dscode.tech.com"
+              placeholder="contact@dscode.tech.com"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 
                          focus:ring-2 focus:ring-green-400 focus:outline-none text-gray-700"
               onChange={(e) => setEmail(e.target.value)}
