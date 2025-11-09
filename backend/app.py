@@ -4,6 +4,9 @@ from datetime import datetime, timedelta
 from models import db, User, Restaurant, FoodItem, Claim
 from utils import send_mail, refresh_daily_tokens
 import random, string
+from datetime import datetime, timedelta
+import threading
+
 
 app = Flask(__name__)
 CORS(app)
@@ -56,6 +59,21 @@ def login():
             "claims_today": user.claims_today,
         }
     )
+
+
+def increment_daily_tokens():
+    users = User.query.all()
+    for user in users:
+        user.tokens += 1
+    db.session.commit()
+    print("✅ All users' tokens incremented")
+
+def schedule_next_increment():
+    now = datetime.now()
+    # Next midnight
+    next_run = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    delay = (next_run - now).total_seconds()
+    threading.Timer(delay, increment_daily_tokens).start()
 
 
 # ---------------- PASSWORD RESET ---------------- #
@@ -226,4 +244,5 @@ def claim_food():
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
+        increment_daily_tokens()
     app.run(debug=True)
