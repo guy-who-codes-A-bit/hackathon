@@ -1,8 +1,9 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/RePlate.png";
 import googlelogo from "../assets/loginwgoogle.png";
 
 export default function Login() {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-[#F4FFF4] flex justify-center items-center">
       <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md">
@@ -50,6 +51,8 @@ export default function Login() {
 
           {/* Continue button */}
           <button
+            onClick={() => navigate("/home")}
+            type="button"
             className="w-full bg-[#6ECF68] text-white font-semibold rounded-xl py-3 
                        hover:bg-[#5BBA58] transition-all"
           >

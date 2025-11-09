@@ -7,6 +7,7 @@ import Landing from "./pages/Landing";
 import Signup from "./pages/Signup";
 import QRPage from "./pages/QRPage";
 import ForgetPassword from "./pages/ForgotPassword";
+import Home from "./pages/Home";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/qrpage" element={<QRPage />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/home" element={<Home />} />
           <Route path="/forgetpassword" element={<ForgetPassword />} />
         </Routes>
       </div>

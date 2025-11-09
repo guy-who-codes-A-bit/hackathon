@@ -1,0 +1,4 @@
+npm install
+npm install openai
+npm install -D tailwindcss postcss autoprefixer
+npm install react-icons
