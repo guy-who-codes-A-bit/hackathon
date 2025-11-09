@@ -55,6 +55,8 @@ def login():
         {
             "success": True,
             "name": user.name,
+            "email": user.email,
+            "id": user.id,
             "tokens": user.tokens,
             "claims_today": user.claims_today,
         }
