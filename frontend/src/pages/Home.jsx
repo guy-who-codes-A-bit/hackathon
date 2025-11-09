@@ -119,100 +119,165 @@ export default function Home() {
     );
 
   return (
-    // gray background for outside the phone
-    <div className="min-h-screen bg-[#f4fff4] flex justify-center items-center py-4">
-      {/* PHONE FRAME (expands on larger screens) */}
-      <div className="relative w-full bg-white rounded-3xl shadow-md flex flex-col overflow-hidden max-w-sm h-[90vh] md:max-w-5xl md:h-[85vh] md:rounded-2xl">
-        {/* TOP SECTION (non-scrollable) */}
-        <div className="p-5 pb-0">
-          {/* header */}
-          <div className="flex items-center justify-between mb-5">
-            <button onClick={handleProfileClick} className="focus:outline-none">
-              <h1 className="text-xl font-medium text-gray-900">Profile</h1>
-            </button>
+    <div className="min-h-screen bg-[#F4FFF4] flex flex-col pb-20">
+      {/* Header Bar */}
+      <div className="bg-white shadow-sm px-6 py-4 sticky top-0 z-10">
+        <div className="flex justify-between items-center">
+          <button onClick={handleProfileClick} className="focus:outline-none">
+            <h1 className="text-2xl font-bold text-gray-800">Profile</h1>
+          </button>
+          <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
+            <span className="text-2xl">⭐</span>
+            <span className="text-lg font-bold text-amber-600">2</span>
+          </div>
+        </div>
+      </div>
 
-            <div className="flex items-center">
-              <span className="text-2xl text-orange-500 mr-1">⭐</span>
-              <span className="font-bold text-gray-900 text-2xl">2</span>
-            </div>
+      {/* Main Content */}
+      <div className="flex-1 px-6 py-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="bg-white rounded-2xl shadow-md p-4 text-center">
+            <div className="text-3xl mb-1">🍱</div>
+            <p className="text-2xl font-bold text-[#6ECF68]">62</p>
+            <p className="text-xs text-gray-500">Meals Saved</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-md p-4 text-center">
+            <div className="text-3xl mb-1">🏪</div>
+            <p className="text-2xl font-bold text-[#6ECF68]">15</p>
+            <p className="text-xs text-gray-500">Restaurants</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-md p-4 text-center">
+            <div className="text-3xl mb-1">📍</div>
+            <p className="text-2xl font-bold text-[#6ECF68]">9</p>
+            <p className="text-xs text-gray-500">Nearby</p>
           </div>
         </div>
 
-        {/* stats */}
-        <div className="px-5 pb-5 flex gap-3 md:grid md:grid-cols-3 md:gap-4">
-          <div className="flex-1 border border-gray-200 rounded-xl p-3">
-            <p className="text-sm text-gray-700">Meals Saved</p>
-            <p className="text-2xl font-semibold text-gray-900">62</p>
-          </div>
-          <div className="flex-1 border border-gray-200 rounded-xl p-3">
-            <p className="text-sm text-gray-700">Active Restaurants</p>
-            <p className="text-2xl font-semibold text-gray-900">15</p>
-          </div>
-          <div className="hidden md:block border border-gray-200 rounded-xl p-3">
-            <p className="text-sm text-gray-700">Nearby</p>
-            <p className="text-2xl font-semibold text-gray-900">8</p>
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <svg
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search restaurants..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white border border-gray-200 rounded-xl pl-12 pr-4 py-3 
+                         focus:ring-2 focus:ring-green-400 focus:outline-none text-gray-700 shadow-sm"
+            />
           </div>
         </div>
 
-        {/* search */}
-        <div className="px-5 pb-3">
-          <input
-            type="text"
-            placeholder="Search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-10 border border-gray-300 rounded-lg text-sm px-4 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
+        {/* Restaurants Section */}
+        <div className="bg-white rounded-2xl shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <svg className="w-5 h-5 text-[#6ECF68]" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Available Now
+            </h2>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+              {filteredRestaurants.length} restaurants
+            </span>
+          </div>
 
-        {/* Scrollable list */}
-        <div className="flex-1 overflow-y-auto px-5 pb-24 md:pb-6">
-          <div className="border border-gray-200 rounded-2xl p-4 space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+          {/* Restaurant List */}
+          <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
             {filteredRestaurants.map((r) => (
-              <div
-                key={r.id}
-                className="flex justify-between items-center py-2 border-b last:border-b-0 border-gray-100 md:border md:rounded-xl md:p-4 md:shadow-sm md:border-gray-200 md:gap-4 md:border-b-0"
-              >
-                <div>
-                  <p className="font-semibold text-gray-900">{r.name}</p>
-                  {r.address && (
-                    <div className="flex items-center text-sm text-gray-500 mt-1">
-                      <span className="text-green-500 mr-1">📍</span>
-                      <p>{r.address}</p>
-                    </div>
-                  )}
-                  <div className="flex items-center text-sm text-gray-500 mt-1">
-                    <span className="text-orange-500 mr-1">⭐</span>
-                    <p>
-                      {r.food_items
-                        ? `${r.food_items.length} meals`
-                        : `${r.tokens_left || 0} tokens`}
-                    </p>
-                  </div>
-                </div>
-
-                <a
-                  href={r.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bg-green-500 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-green-600 transition min-w-[80px] text-center"
-                >
-                  VIEW
-                </a>
-              </div>
+              <RestaurantCard key={r.id} restaurant={r} />
             ))}
 
             {filteredRestaurants.length === 0 && (
-              <p className="text-center text-gray-500 py-4 col-span-full">
-                No restaurants found matching “{searchTerm}”
-              </p>
+              <div className="text-center py-8">
+                <div className="text-5xl mb-3">🔍</div>
+                <p className="text-gray-500">No restaurants found matching "{searchTerm}"</p>
+              </div>
             )}
           </div>
         </div>
-
-        {/* Bottom nav */}
-        <BottomNav />
       </div>
+
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
+}
+
+/* Restaurant Card Component */
+function RestaurantCard({ restaurant }) {
+  const getRestaurantEmoji = (name) => {
+    const emojiMap = {
+      mcdonalds: "🍔",
+      cobs: "🥖",
+      "save on": "🛒",
+      kfc: "🍗",
+      starbucks: "☕",
+      subway: "🥪",
+      "tim hortons": "☕",
+      pizza: "🍕",
+      "a&w": "🍔",
+    };
+
+    const lowerName = name.toLowerCase();
+    for (const [key, emoji] of Object.entries(emojiMap)) {
+      if (lowerName.includes(key)) return emoji;
+    }
+    return "🍽️";
+  };
+
+  return (
+    <div className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 
+                    rounded-xl px-4 py-3 transition-all border border-gray-200">
+      <div className="flex items-center gap-3 flex-1">
+        <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-2xl shadow-sm">
+          {getRestaurantEmoji(restaurant.name)}
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-gray-800">{restaurant.name}</p>
+          <div className="flex items-center gap-1 mt-1">
+            <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <p className="text-xs text-gray-500">{restaurant.distance}</p>
+          </div>
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-amber-500">⭐</span>
+            <p className="text-xs text-gray-600 font-medium">{restaurant.tokens} tokens</p>
+          </div>
+        </div>
+      </div>
+      <a
+        href={restaurant.url}
+        target="_blank"
+        rel="noreferrer"
+        className="bg-[#6ECF68] text-white px-5 py-2 rounded-xl text-sm font-semibold 
+                   hover:bg-[#5BBA58] transition-all shadow-sm"
+      >
+        VIEW
+      </a>
+    </div>
+  );
+
 }
