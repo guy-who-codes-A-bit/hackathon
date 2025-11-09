@@ -1,9 +1,23 @@
 import { Link, useNavigate } from "react-router-dom";
+import { apiRequest } from "../api";
+import { useState } from "react";
 import logo from "../assets/RePlate.png";
 import googlelogo from "../assets/loginwgoogle.png";
 
 export default function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
   const navigate = useNavigate();
+
+  const handleLogin = async () => {
+    const res = await apiRequest("/login", "POST", { email, password });
+    if (res.success) {
+      localStorage.setItem("user", JSON.stringify(res)); // save user data
+      navigate("/home");
+    } else setMessage("❌ " + res.message);
+  };
+
   return (
     <div className="min-h-screen bg-[#F4FFF4] flex justify-center items-center">
       <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md">
@@ -24,6 +38,7 @@ export default function Login() {
               defaultValue="contact@dscode.tech.com"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 
                          focus:ring-2 focus:ring-green-400 focus:outline-none text-gray-700"
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
@@ -36,6 +51,7 @@ export default function Login() {
               type="password"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 
                          focus:ring-2 focus:ring-green-400 focus:outline-none text-gray-700"
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 
@@ -51,7 +67,7 @@ export default function Login() {
 
           {/* Continue button */}
           <button
-            onClick={() => navigate("/home")}
+            onClick={handleLogin}
             type="button"
             className="w-full bg-[#6ECF68] text-white font-semibold rounded-xl py-3 
                        hover:bg-[#5BBA58] transition-all"
@@ -83,6 +99,7 @@ export default function Login() {
           </Link>
         </p>
       </div>
+      <p>{message}</p>
     </div>
   );
 }

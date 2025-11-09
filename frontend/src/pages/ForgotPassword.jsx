@@ -1,69 +1,118 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import { apiRequest } from "../api";
 import logo from "../assets/RePlate.png";
 
 export default function ForgotPassword() {
-  const [step, setStep] = useState(1); // 1: email, 2: verify code, 3: reset password, 4: success
+  const [step, setStep] = useState(1); // 1=email, 2=code, 3=new password, 4=success
   const [email, setEmail] = useState("");
   const [code, setCode] = useState(["", "", ""]);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Helper: combine 3 code boxes into one string
+  const combinedCode = code.join("");
 
   const handleCodeChange = (index, value) => {
     if (value.length <= 1) {
       const newCode = [...code];
-      newCode[index] = value;
+      newCode[index] = value.toUpperCase();
       setCode(newCode);
-
-      // Auto-focus next input
       if (value && index < 2) {
         document.getElementById(`code-${index + 1}`)?.focus();
       }
     }
   };
 
-  const handleSendReset = (e) => {
+  // 1️⃣ Send reset email
+  const handleSendReset = async (e) => {
     e.preventDefault();
-    setStep(2);
-  };
-
-  const handleVerifyCode = (e) => {
-    e.preventDefault();
-    setStep(3);
-  };
-
-  const handleResetPassword = (e) => {
-    e.preventDefault();
-    if (password === confirmPassword) {
-      setStep(4);
+    setLoading(true);
+    try {
+      const res = await apiRequest("/forgot-password", "POST", { email });
+      if (res.success) {
+        alert("✅ Verification code sent to your email!");
+        setStep(2);
+      } else {
+        alert("❌ " + res.message);
+      }
+    } catch {
+      alert("⚠️ Server error while sending email.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUpdatePassword = (e) => {
+  // 2️⃣ Verify code
+  const handleVerifyCode = async (e) => {
     e.preventDefault();
-    // Handle final password update
-    setStep(4);
+    if (combinedCode.length !== 3) {
+      alert("Please enter all 3 code characters.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await apiRequest("/verify-code", "POST", {
+        email,
+        code: combinedCode,
+      });
+      if (res.success) {
+        alert("✅ Code verified!");
+        setStep(3);
+      } else {
+        alert("❌ " + res.message);
+      }
+    } catch {
+      alert("⚠️ Server error verifying code.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Step 1: Enter Email
-  if (step === 1) {
+  // 3️⃣ Update password
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      alert("❌ Passwords do not match");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await apiRequest("/reset-password", "POST", {
+        email,
+        password,
+      });
+      if (res.success) {
+        alert("✅ Password updated successfully!");
+        setStep(4);
+      } else {
+        alert("❌ " + res.message);
+      }
+    } catch {
+      alert("⚠️ Server error updating password.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ Step 1: Enter Email
+  if (step === 1)
     return (
       <div className="min-h-screen bg-[#F4FFF4] flex justify-center items-center">
         <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md">
-          {/* Logo */}
           <div className="flex flex-col items-center space-y-2 mb-6">
             <img src={logo} alt="RePlate Logo" className="w-65 h-40" />
           </div>
 
-          {/* Title */}
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Forgot password</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">
+            Forgot password
+          </h2>
           <p className="text-sm text-gray-600 mb-6">
-            Please enter your email to reset the password
+            Please enter your email to reset your password
           </p>
 
-          {/* Form */}
           <form onSubmit={handleSendReset} className="space-y-5">
-            {/* Email field */}
             <div className="space-y-1">
               <label className="block text-sm font-semibold text-gray-800">
                 Your Email
@@ -79,41 +128,38 @@ export default function ForgotPassword() {
               />
             </div>
 
-            {/* Reset Password button */}
             <button
               type="submit"
-              className="w-full bg-[#6ECF68] text-white font-semibold rounded-xl py-3 
-                         hover:bg-[#5BBA58] transition-all"
+              disabled={loading}
+              className={`w-full ${
+                loading ? "bg-gray-400" : "bg-[#6ECF68] hover:bg-[#5BBA58]"
+              } text-white font-semibold rounded-xl py-3 transition-all`}
             >
-              Reset Password
+              {loading ? "Sending..." : "Reset Password"}
             </button>
           </form>
         </div>
       </div>
     );
-  }
 
-  // Step 2: Check Email / Verify Code
-  if (step === 2) {
+  // ✅ Step 2: Verify Code
+  if (step === 2)
     return (
       <div className="min-h-screen bg-[#F4FFF4] flex justify-center items-center">
         <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md">
-          {/* Logo */}
           <div className="flex flex-col items-center space-y-2 mb-6">
             <img src={logo} alt="RePlate Logo" className="w-65 h-40" />
           </div>
 
-          {/* Title */}
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Check your email</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">
+            Check your email
+          </h2>
           <p className="text-sm text-gray-600 mb-6">
-            We sent a reset link to <span className="font-semibold">{email || "contact@dscode.com"}</span>
-            <br />
-            Please enter digit code sent to your email
+            We sent a reset code to{" "}
+            <span className="font-semibold">{email}</span>. Enter it below.
           </p>
 
-          {/* Form */}
           <form onSubmit={handleVerifyCode} className="space-y-5">
-            {/* Code inputs */}
             <div className="flex justify-center gap-3 mb-4">
               {code.map((digit, index) => (
                 <input
@@ -125,57 +171,54 @@ export default function ForgotPassword() {
                   onChange={(e) => handleCodeChange(index, e.target.value)}
                   className="w-14 h-14 text-center text-2xl font-semibold border-2 border-gray-300 
                              rounded-xl focus:ring-2 focus:ring-green-400 focus:outline-none 
-                             focus:border-green-400"
+                             focus:border-green-400 uppercase"
                   required
                 />
               ))}
             </div>
 
-            {/* Verify Code button */}
             <button
               type="submit"
-              className="w-full bg-[#6ECF68] text-white font-semibold rounded-xl py-3 
-                         hover:bg-[#5BBA58] transition-all"
+              disabled={loading}
+              className={`w-full ${
+                loading ? "bg-gray-400" : "bg-[#6ECF68] hover:bg-[#5BBA58]"
+              } text-white font-semibold rounded-xl py-3 transition-all`}
             >
-              Verify Code
+              {loading ? "Verifying..." : "Verify Code"}
             </button>
 
-            {/* Resend link */}
             <div className="text-center text-sm text-gray-600">
-              Haven't got the email yet?{" "}
+              Didn’t get the email?{" "}
               <button
                 type="button"
-                onClick={() => setStep(2)}
+                onClick={() => handleSendReset(new Event("resend"))}
                 className="text-blue-600 hover:underline font-medium"
               >
-                Resend email
+                Resend
               </button>
             </div>
           </form>
         </div>
       </div>
     );
-  }
 
-  // Step 3: Set New Password
-  if (step === 3) {
+  // ✅ Step 3: Set New Password
+  if (step === 3)
     return (
       <div className="min-h-screen bg-[#F4FFF4] flex justify-center items-center">
         <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md">
-          {/* Logo */}
           <div className="flex flex-col items-center space-y-2 mb-6">
             <img src={logo} alt="RePlate Logo" className="w-65 h-40" />
           </div>
 
-          {/* Title */}
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Set a new password</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">
+            Set a new password
+          </h2>
           <p className="text-sm text-gray-600 mb-6">
-            Create a new password. Ensure it differs from previous ones for security
+            Create a new password that’s different from previous ones.
           </p>
 
-          {/* Form */}
           <form onSubmit={handleUpdatePassword} className="space-y-5">
-            {/* Password field */}
             <div className="space-y-1">
               <label className="block text-sm font-semibold text-gray-800">
                 Password
@@ -184,14 +227,13 @@ export default function ForgotPassword() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your new password"
+                placeholder="Enter new password"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 
                            focus:ring-2 focus:ring-green-400 focus:outline-none text-gray-700"
                 required
               />
             </div>
 
-            {/* Confirm Password field */}
             <div className="space-y-1">
               <label className="block text-sm font-semibold text-gray-800">
                 Confirm Password
@@ -207,49 +249,42 @@ export default function ForgotPassword() {
               />
             </div>
 
-            {/* Update Password button */}
             <button
               type="submit"
-              className="w-full bg-[#6ECF68] text-white font-semibold rounded-xl py-3 
-                         hover:bg-[#5BBA58] transition-all"
+              disabled={loading}
+              className={`w-full ${
+                loading ? "bg-gray-400" : "bg-[#6ECF68] hover:bg-[#5BBA58]"
+              } text-white font-semibold rounded-xl py-3 transition-all`}
             >
-              Update Password
+              {loading ? "Updating..." : "Update Password"}
             </button>
           </form>
         </div>
       </div>
     );
-  }
 
-  // Step 4: Success
-  if (step === 4) {
+  // ✅ Step 4: Success
+  if (step === 4)
     return (
       <div className="min-h-screen bg-[#F4FFF4] flex justify-center items-center">
-        <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md">
-          {/* Logo */}
+        <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md text-center">
           <div className="flex flex-col items-center space-y-2 mb-6">
             <img src={logo} alt="RePlate Logo" className="w-65 h-40" />
           </div>
 
-          {/* Title */}
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Successful</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Success!</h2>
           <p className="text-sm text-gray-600 mb-6">
-            Your password has been reset successfully
+            Your password has been reset successfully.
           </p>
 
-          {/* Continue button */}
           <Link to="/login">
-            <button
-              className="w-full bg-[#6ECF68] text-white font-semibold rounded-xl py-3 
-                         hover:bg-[#5BBA58] transition-all"
-            >
-              Continue
+            <button className="w-full bg-[#6ECF68] text-white font-semibold rounded-xl py-3 hover:bg-[#5BBA58] transition-all">
+              Continue to Login
             </button>
           </Link>
         </div>
       </div>
     );
-  }
 
   return null;
 }

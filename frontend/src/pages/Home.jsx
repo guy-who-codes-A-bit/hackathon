@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import BottomNav from "../components/BottomNav";
+import { apiRequest } from "../api";
 
 const dummyRestaurants = [
   { id: 1, name: "McDonalds", distance: "0.8 km", tokens: 2 },
@@ -14,7 +15,10 @@ const dummyRestaurants = [
 ];
 
 export default function Home() {
+  const [restaurants, setRestaurants] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [userTokens, setUserTokens] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   const handleProfileClick = () => {
     alert("Profile clicked! (connect to backend later)");
@@ -23,9 +27,43 @@ export default function Home() {
   const buildGmapsLink = (name) =>
     `https://maps.google.com/?q=${encodeURIComponent(name)}`;
 
+  // 🧭 Fetch restaurants and user info from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await apiRequest("/restaurants");
+        setRestaurants(res);
+
+        // get user data from login
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          setUserTokens(parsed.tokens || 0);
+        }
+      } catch (err) {
+        console.error("Failed to fetch restaurants:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
   const filteredRestaurants = dummyRestaurants.filter((r) =>
     r.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // 🥡 Claim food (future endpoint)
+  const handleClaim = async (restaurantId) => {
+    alert(`Claim clicked for restaurant #${restaurantId} (coming soon)`);
+  };
+
+  if (loading)
+    return (
+      <div className="min-h-screen bg-[#f4fff4] flex justify-center items-center">
+        <p className="text-gray-600 text-lg">Loading restaurants...</p>
+      </div>
+    );
 
   return (
     // gray background for outside the phone
@@ -36,10 +74,7 @@ export default function Home() {
         <div className="p-5 pb-0">
           {/* header */}
           <div className="flex items-center justify-between mb-5">
-            <button
-              onClick={handleProfileClick}
-              className="focus:outline-none"
-            >
+            <button onClick={handleProfileClick} className="focus:outline-none">
               <h1 className="text-xl font-medium text-gray-900">Profile</h1>
             </button>
 
@@ -77,7 +112,7 @@ export default function Home() {
           />
         </div>
 
-        {/* SCROLLABLE LIST */}
+        {/* Scrollable list */}
         <div className="flex-1 overflow-y-auto px-5 pb-24 md:pb-6">
           <div className="border border-gray-200 rounded-2xl p-4 space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
             {filteredRestaurants.map((r) => (
@@ -87,13 +122,19 @@ export default function Home() {
               >
                 <div>
                   <p className="font-semibold text-gray-900">{r.name}</p>
+                  {r.address && (
+                    <div className="flex items-center text-sm text-gray-500 mt-1">
+                      <span className="text-green-500 mr-1">📍</span>
+                      <p>{r.address}</p>
+                    </div>
+                  )}
                   <div className="flex items-center text-sm text-gray-500 mt-1">
-                    <span className="text-green-500 mr-1">📍</span>
-                    <p>{r.distance}</p>
-                  </div>
-                  <div className="flex items-center text-sm text-gray-500">
                     <span className="text-orange-500 mr-1">⭐</span>
-                    <p>{r.tokens} tokens available</p>
+                    <p>
+                      {r.food_items
+                        ? `${r.food_items.length} meals`
+                        : `${r.tokens_left || 0} tokens`}
+                    </p>
                   </div>
                 </div>
 
@@ -116,7 +157,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* BOTTOM NAV INSIDE PHONE */}
+        {/* Bottom nav */}
         <BottomNav />
       </div>
     </div>
