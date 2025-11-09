@@ -25,7 +25,7 @@ export default function QRPage() {
   }, []);
 
   const handleGoBack = () => {
-    navigate("/map"); // or /home depending on your flow
+    navigate("/maps"); // or /home depending on your flow
   };
 
   if (loading)
