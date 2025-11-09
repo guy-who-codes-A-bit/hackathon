@@ -3,98 +3,42 @@ import BottomNav from "../components/BottomNav";
 import { apiRequest } from "../api";
 import { useNavigate } from "react-router-dom";
 
-const dummyRestaurants = [
-  {
-    id: 1,
-    name: "McDonalds",
-    distance: "3933 University Ave NW",
-    tokens: 2,
-    url: "https://maps.app.goo.gl/1aHmrmqsDPxLFgwA6",
-  },
-  {
-    id: 2,
-    name: "COBS Bread",
-    distance: "4023 University Ave NW",
-    tokens: 2,
-    url: "https://maps.app.goo.gl/c9hnPkUkzxST78Gr9",
-  },
-  {
-    id: 3,
-    name: "Save On Foods",
-    distance: "4163 University Ave NW",
-    tokens: 2,
-    url: "https://maps.app.goo.gl/t8yEPh4gmR4Vqt6K6",
-  },
-  {
-    id: 4,
-    name: "KFC",
-    distance: "5012 16 Ave NW",
-    tokens: 2,
-    url: "https://maps.app.goo.gl/tbCArdZCErFS55gs6",
-  },
-  {
-    id: 5,
-    name: "Starbucks",
-    distance: "402 Collegiate Blvd NW",
-    tokens: 2,
-    url: "https://maps.app.goo.gl/UYZmCFYuPw2Esvn67",
-  },
-  {
-    id: 6,
-    name: "Subway",
-    distance: "85 Bowridge Dr NW",
-    tokens: 2,
-    url: "https://maps.app.goo.gl/CwnB3zVD7DywUnwa7",
-  },
-  {
-    id: 7,
-    name: "Tim Hortons",
-    distance: "6428 Bowness Rd NW",
-    tokens: 2,
-    url: "https://maps.app.goo.gl/9PMzmMxysMdtaDXk7",
-  },
-  {
-    id: 8,
-    name: "Pizza Hut",
-    distance: "5012 16 Ave NW",
-    tokens: 2,
-    url: "https://maps.app.goo.gl/iS9kP3TgTomdfpn17",
-  },
-  {
-    id: 9,
-    name: "A&W",
-    distance: "5120 Shaganappi Trail NW",
-    tokens: 2,
-    url: "https://maps.app.goo.gl/MumwXLRcedbSDQor5",
-  },
-];
-
 export default function Home() {
   const [restaurants, setRestaurants] = useState([]);
+  const [restaurantCount, setRestaurantCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [userTokens, setUserTokens] = useState(0);
+  const [mealsSaved, setMealsSaved] = useState(62);
+  const [co2Saved, setCo2Saved] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleProfileClick = () => {
     navigate("/profile");
   };
 
-  // 🧭 Fetch restaurants and user info from backend
+  // Fetch restaurants and user info from backend
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await apiRequest("/restaurants");
-        setRestaurants(res);
+        setRestaurants(res.restaurants || []);
+        setRestaurantCount(res.count || 0);
 
-        // get user data from login
+        // Get user data from localStorage
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
           const parsed = JSON.parse(storedUser);
           setUserTokens(parsed.tokens || 0);
         }
+        const saved = localStorage.getItem("mealsSaved");
+        if (saved) setMealsSaved(parseInt(saved));
+        setCo2Saved((mealsSaved * 2.5).toFixed(1)); // 2.5kg CO2 per meal
+
       } catch (err) {
         console.error("Failed to fetch restaurants:", err);
+        setError("Failed to load restaurants. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -102,21 +46,39 @@ export default function Home() {
     fetchData();
   }, []);
 
-  const filteredRestaurants = dummyRestaurants.filter((r) =>
+  // Filter restaurants: only show those with tokens > 0 AND match search term
+  const filteredRestaurants = restaurants.filter((r) =>
+    r.tokens_left > 0 &&
     r.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // 🥡 Claim food (future endpoint)
-  const handleClaim = async (restaurantId) => {
-    alert(`Claim clicked for restaurant #${restaurantId} (coming soon)`);
-  };
+  // Calculate stats based on actual data
+  const totalMealsSaved = restaurants.reduce((sum, r) => sum + (r.tokens_left || 0), 0);
+  const availableRestaurants = restaurants.filter(r => r.tokens_left > 0).length;
 
-  if (loading)
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#f4fff4] flex justify-center items-center">
         <p className="text-gray-600 text-lg">Loading restaurants...</p>
       </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#f4fff4] flex justify-center items-center">
+        <div className="text-center">
+          <p className="text-red-600 text-lg mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-[#6ECF68] text-white px-6 py-2 rounded-xl"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F4FFF4] flex flex-col pb-20">
@@ -131,7 +93,7 @@ export default function Home() {
           </button>
           <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
             <span className="text-2xl">⭐</span>
-            <span className="text-lg font-bold text-amber-600">2</span>
+            <span className="text-lg font-bold text-amber-600">{userTokens}</span>
           </div>
         </div>
       </div>
@@ -142,18 +104,18 @@ export default function Home() {
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="bg-white rounded-2xl shadow-md p-4 text-center">
             <div className="text-3xl mb-1">🍱</div>
-            <p className="text-2xl font-bold text-[#6ECF68]">62</p>
+            <p className="text-2xl font-bold text-[#6ECF68]">{mealsSaved}</p>
             <p className="text-xs text-gray-500">Meals Saved</p>
           </div>
           <div className="bg-white rounded-2xl shadow-md p-4 text-center">
             <div className="text-3xl mb-1">🏪</div>
-            <p className="text-2xl font-bold text-[#6ECF68]">15</p>
+            <p className="text-2xl font-bold text-[#6ECF68]">{restaurantCount}</p>
             <p className="text-xs text-gray-500">Restaurants</p>
           </div>
           <div className="bg-white rounded-2xl shadow-md p-4 text-center">
-            <div className="text-3xl mb-1">📍</div>
-            <p className="text-2xl font-bold text-[#6ECF68]">9</p>
-            <p className="text-xs text-gray-500">Nearby</p>
+            <div className="text-3xl mb-1">🌱</div>
+            <p className="text-2xl font-bold text-[#6ECF68]">{co2Saved}</p>
+            <p className="text-xs text-gray-500">CO₂ kg</p>
           </div>
         </div>
 
@@ -204,14 +166,21 @@ export default function Home() {
 
           {/* Restaurant List */}
           <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-            {filteredRestaurants.map((r) => (
-              <RestaurantCard key={r.id} restaurant={r} />
-            ))}
-
-            {filteredRestaurants.length === 0 && (
+            {filteredRestaurants.length > 0 ? (
+              filteredRestaurants.map((r) => (
+                <RestaurantCard key={r.id} restaurant={r} />
+              ))
+            ) : (
               <div className="text-center py-8">
-                <div className="text-5xl mb-3">🔍</div>
-                <p className="text-gray-500">No restaurants found matching "{searchTerm}"</p>
+                <div className="text-5xl mb-3">
+                  {searchTerm ? "🔍" : "😔"}
+                </div>
+                <p className="text-gray-500">
+                  {searchTerm
+                    ? `No available restaurants found matching "${searchTerm}"`
+                    : "No restaurants with available servings at the moment"
+                  }
+                </p>
               </div>
             )}
           </div>
@@ -229,14 +198,21 @@ function RestaurantCard({ restaurant }) {
   const getRestaurantEmoji = (name) => {
     const emojiMap = {
       mcdonalds: "🍔",
+      "mcdonald": "🍔",
       cobs: "🥖",
       "save on": "🛒",
       kfc: "🍗",
       starbucks: "☕",
       subway: "🥪",
       "tim hortons": "☕",
+      "tim horton": "☕",
       pizza: "🍕",
       "a&w": "🍔",
+      burger: "🍔",
+      chicken: "🍗",
+      coffee: "☕",
+      sandwich: "🥪",
+      bakery: "🥖",
     };
 
     const lowerName = name.toLowerCase();
@@ -244,6 +220,16 @@ function RestaurantCard({ restaurant }) {
       if (lowerName.includes(key)) return emoji;
     }
     return "🍽️";
+  };
+
+  // Generate Google Maps URL using lat/lon if available
+  const getMapUrl = () => {
+    if (restaurant.lat && restaurant.lon) {
+      return `https://www.google.com/maps?q=${restaurant.lat},${restaurant.lon}`;
+    } else if (restaurant.address) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.address)}`;
+    }
+    return "#";
   };
 
   return (
@@ -255,6 +241,8 @@ function RestaurantCard({ restaurant }) {
         </div>
         <div className="flex-1">
           <p className="text-sm font-semibold text-gray-800">{restaurant.name}</p>
+
+          {/* Address */}
           <div className="flex items-center gap-1 mt-1">
             <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
               <path
@@ -263,24 +251,36 @@ function RestaurantCard({ restaurant }) {
                 clipRule="evenodd"
               />
             </svg>
-            <p className="text-xs text-gray-500">{restaurant.distance}</p>
+            <p className="text-xs text-gray-500">{restaurant.address || "Address not available"}</p>
           </div>
+
+          {/* Food Type */}
+          {restaurant.food_type && (
+            <div className="flex items-center gap-1 mt-1">
+              <span className="text-xs">🍽️</span>
+              <p className="text-xs text-gray-600">{restaurant.food_type}</p>
+            </div>
+          )}
+
+          {/* Tokens Left */}
           <div className="flex items-center gap-1 mt-1">
             <span className="text-amber-500">⭐</span>
-            <p className="text-xs text-gray-600 font-medium">{restaurant.tokens} tokens</p>
+            <p className="text-xs text-gray-600 font-medium">
+              {restaurant.tokens_left} {restaurant.tokens_left === 1 ? 'serving' : 'servings'} left
+            </p>
           </div>
         </div>
       </div>
+
       <a
-        href={restaurant.url}
+        href={getMapUrl()}
         target="_blank"
         rel="noreferrer"
-        className="bg-[#6ECF68] text-white px-5 py-2 rounded-xl text-sm font-semibold 
-                   hover:bg-[#5BBA58] transition-all shadow-sm"
+        className="px-5 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm 
+                   bg-[#6ECF68] text-white hover:bg-[#5BBA58]"
       >
         VIEW
       </a>
     </div>
   );
-
 }

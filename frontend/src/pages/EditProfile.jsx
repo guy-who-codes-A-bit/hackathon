@@ -29,7 +29,7 @@ export default function EditProfile() {
 
         <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
           <span className="text-2xl">⭐</span>
-          <span className="text-lg font-bold text-amber-600">2</span>
+          <span className="text-lg font-bold text-amber-600">{user.tokens}</span>
         </div>
       </div>
 
