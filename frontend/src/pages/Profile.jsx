@@ -29,7 +29,7 @@ export default function Profile() {
               <div className="w-32 h-32 rounded-full bg-linear-to-br from-green-400 to-green-600 
                               flex items-center justify-center shadow-lg">
                 <div className="w-28 h-28 rounded-full bg-white flex items-center justify-center">
-                  <span className="text-6xl">🙂</span>
+                  <span className="text-6xl">😎</span>
                 </div>
               </div>
               {/* Edit Icon Badge */}

@@ -9,20 +9,6 @@ export default function Maps() {
         <h1 className="text-xl font-bold text-green-700 tracking-tight">
           🍴 RePlate Map
         </h1>
-        <nav className="flex gap-3">
-          <a
-            href="/home"
-            className="text-m pt-1 text-green-600 hover:text-green-800 transition-colors"
-          >
-            Home
-          </a>
-          <a
-            href="/profile"
-            className="text-m pt-1 text-green-600 hover:text-green-800 transition-colors"
-          >
-            Profile
-          </a>
-        </nav>
       </header>
 
       {/* Main 3D Map */}

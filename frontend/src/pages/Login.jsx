@@ -9,6 +9,10 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
+  
+  const handleGoogleLogin = () => {
+    window.location.href = "http://127.0.0.1:5000/login/google";
+  };
 
   const handleLogin = async () => {
     const res = await apiRequest("/login", "POST", { email, password });
@@ -78,7 +82,9 @@ export default function Login() {
           </button>
 
           {/* Google Login */}
-          <button
+           <button
+            onClick={handleGoogleLogin}
+            type="button"
             className="w-full py-3 border border-gray-300 rounded-xl flex items-center justify-center 
                        hover:bg-gray-50"
           >
