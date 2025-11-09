@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import logo from "../../assets/RePlate.png";
 
 export default function RestaurantScanner() {
-  const [result, setResult] = useState("");
-  const qrRef = useRef(null); // 👈 reference to the div
+  const [status, setStatus] = useState("ready"); // ready | scanning | success | error
+  const [message, setMessage] = useState("");
+  const qrRef = useRef(null);
 
   useEffect(() => {
-    if (!qrRef.current) return; // wait until div is mounted
+    if (!qrRef.current) return;
 
     const scanner = new Html5QrcodeScanner(
-      qrRef.current.id, // 👈 use the ID from the actual element
+      qrRef.current.id,
       { fps: 10, qrbox: { width: 250, height: 250 } },
       false
     );
@@ -17,18 +20,23 @@ export default function RestaurantScanner() {
     scanner.render(
       async (decodedText) => {
         console.log("📸 Scanned QR:", decodedText);
+        setStatus("scanning");
+        setMessage("Verifying claim...");
 
         let payload;
         try {
           payload = JSON.parse(decodedText);
         } catch {
-          setResult("⚠️ Invalid QR format");
+          setStatus("error");
+          setMessage("⚠️ Invalid QR format (not JSON)");
           await scanner.clear();
           return;
         }
 
-        if (!payload.claim_id) {
-          setResult("⚠️ Missing claim ID in QR");
+        const claimId = payload?.claim_id;
+        if (!claimId) {
+          setStatus("error");
+          setMessage("⚠️ Missing claim ID in QR");
           await scanner.clear();
           return;
         }
@@ -37,55 +45,60 @@ export default function RestaurantScanner() {
           const res = await fetch("http://127.0.0.1:5000/verify-claim", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ claim_id: payload.claim_id }),
+            body: JSON.stringify({ claim_id: claimId }),
           });
+          const data = await res.json();
 
-          const verify = await res.json();
-          console.log("🔍 Verification Response:", verify);
-
-          if (verify.success) {
-            setResult(`✅ Verified claim #${payload.claim_id}`);
+          if (data.success) {
+            setStatus("success");
+            setMessage(`✅ Claim #${claimId} verified for ${data.user.name}`);
           } else {
-            setResult(`❌ ${verify.message}`);
+            setStatus("error");
+            setMessage(`❌ ${data.message}`);
           }
-
-          await scanner.clear();
         } catch (err) {
-          console.error("Error verifying claim:", err);
-          setResult("⚠️ Server or network error");
+          console.error(err);
+          setStatus("error");
+          setMessage("⚠️ Network or server error");
+        } finally {
           await scanner.clear();
         }
       },
-      (error) => {
-        // Ignore repeated scan errors
-      }
+      (err) => console.log("Scanner error:", err)
     );
 
     return () => {
-      // Clean up when leaving
       scanner.clear().catch(() => {});
-      qrRef.current?.remove();
     };
-  }, [qrRef]);
+  }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4FFF4]">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4FFF4] p-4">
+      <img src={logo} alt="RePlate Logo" className="w-40 mb-3" />
       <h1 className="text-2xl font-bold text-gray-800 mb-2">
         Scan User QR Code
       </h1>
-      <p className="text-gray-600 mb-4">
-        Hold a user's QR code in front of the camera
+      <p className="text-gray-600 mb-6 text-center">
+        Hold a customer’s QR code in front of your camera
       </p>
 
-      {/* 👇 Attach a ref instead of relying on querySelector */}
       <div
         ref={qrRef}
         id="qr-reader"
-        className="w-[300px] h-[300px] border border-gray-300 rounded-xl"
+        className="w-[320px] h-[320px] border-4 border-[#6ECF68] rounded-2xl overflow-hidden shadow-lg"
       />
 
-      {result && (
-        <p className="mt-4 text-sm font-semibold text-gray-800">{result}</p>
+      {status !== "ready" && (
+        <div className="mt-6 flex flex-col items-center gap-2 bg-white p-4 rounded-xl shadow-md w-full max-w-xs">
+          {status === "scanning" && (
+            <Loader2 className="animate-spin text-gray-500 w-8 h-8" />
+          )}
+          {status === "success" && (
+            <CheckCircle2 className="text-green-600 w-8 h-8" />
+          )}
+          {status === "error" && <XCircle className="text-red-500 w-8 h-8" />}
+          <p className="text-gray-700 text-sm text-center">{message}</p>
+        </div>
       )}
     </div>
   );

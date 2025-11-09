@@ -18,9 +18,13 @@ CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
 
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///replate.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")  # Add this line
+app.config["SECRET_KEY"] = os.getenv(
+    "SECRET_KEY", "dev-secret-key-change-in-production"
+)  # Add this line
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # Add this
-app.config["SESSION_COOKIE_SECURE"] = False    # Add this (set True in production with HTTPS)
+app.config["SESSION_COOKIE_SECURE"] = (
+    False  # Add this (set True in production with HTTPS)
+)
 
 
 db.init_app(app)
@@ -73,70 +77,71 @@ def login():
         }
     )
 
+
 oauth = OAuth(app)
 google = oauth.register(
-    name='google',
+    name="google",
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
     client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={
-        'scope': 'openid email profile'
-    }
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
 )
 
-@app.route('/login/google')
+
+@app.route("/login/google")
 def google_login():
     redirect_uri = "http://localhost:5000/auth/google/callback"
     return google.authorize_redirect(redirect_uri)
+
 
 @app.route("/auth/google/callback")
 def google_callback():
     try:
         token = google.authorize_access_token()
-        user_info = token.get('userinfo')  # This might be None
-        
+        user_info = token.get("userinfo")  # This might be None
+
         # If userinfo is not in token, fetch it manually
         if not user_info:
             userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
-            headers = {'Authorization': f'Bearer {token.get("access_token")}'}
+            headers = {"Authorization": f'Bearer {token.get("access_token")}'}
             user_response = requests.get(userinfo_url, headers=headers)
             user_info = user_response.json()
-            
+
     except Exception as e:
         print(f"OAuth error: {e}")  # Debug print
         # Fallback: manually parse the callback
-        code = request.args.get('code')
+        code = request.args.get("code")
         if not code:
             return jsonify({"success": False, "message": "No authorization code"}), 400
-        
+
         # Exchange code for token manually
         token_url = "https://oauth2.googleapis.com/token"
         token_data = {
-            'code': code,
-            'client_id': os.getenv("GOOGLE_CLIENT_ID"),
-            'client_secret': os.getenv("GOOGLE_CLIENT_SECRET"),
-            'redirect_uri': "http://localhost:5000/auth/google/callback",
-            'grant_type': 'authorization_code'
+            "code": code,
+            "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+            "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
+            "redirect_uri": "http://localhost:5000/auth/google/callback",
+            "grant_type": "authorization_code",
         }
         token_response = requests.post(token_url, data=token_data)
         token = token_response.json()
-        
+
         # Get user info
         userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
-        headers = {'Authorization': f'Bearer {token.get("access_token")}'}
+        headers = {"Authorization": f'Bearer {token.get("access_token")}'}
         user_response = requests.get(userinfo_url, headers=headers)
         user_info = user_response.json()
-    
+
     print(f"Google user info: {user_info}")  # Debug print
-    
+
     if not user_info:
         return jsonify({"success": False, "message": "Failed to get user info"}), 400
-    
-    email = user_info.get('email')
-    name = user_info.get('name')
-    
+
+    email = user_info.get("email")
+    name = user_info.get("name")
+
     print(f"Email: {email}, Name: {name}")  # Debug print
-    
+
     # Check if user exists, create if not
     user = User.query.filter_by(email=email).first()
     if not user:
@@ -146,10 +151,10 @@ def google_callback():
         print(f"Created new user: {name} ({email})")  # Debug print
     else:
         print(f"Found existing user: {user.name} ({user.email})")  # Debug print
-    
+
     # Refresh tokens
     refresh_daily_tokens(user)
-    
+
     return f"""
     <script>
         localStorage.setItem('user_id', '{user.id}');
@@ -270,21 +275,22 @@ def reset_password():
 @app.route("/restaurants", methods=["GET"])
 def get_restaurants():
     all_rest = Restaurant.query.all()
-    return jsonify({
-        "count": len(all_rest),
-        "restaurants":
-        [
-            {
-                "id": r.id,
-                "name": r.name,
-                "lat": r.lat,
-                "lon": r.lon,
-                "address": r.address,
-                "food_type": r.food_type,
-                "tokens_left": r.tokens_left,
-            }
-            for r in all_rest
-        ]}
+    return jsonify(
+        {
+            "count": len(all_rest),
+            "restaurants": [
+                {
+                    "id": r.id,
+                    "name": r.name,
+                    "lat": r.lat,
+                    "lon": r.lon,
+                    "address": r.address,
+                    "food_type": r.food_type,
+                    "tokens_left": r.tokens_left,
+                }
+                for r in all_rest
+            ],
+        }
     )
 
 
@@ -381,32 +387,27 @@ def claim_food():
     user = db.session.get(User, data.get("user_id"))
     restaurant = db.session.get(Restaurant, data.get("restaurant_id"))
 
-    refresh_daily_tokens(user)
+    if not user or not restaurant:
+        return jsonify({"success": False, "message": "Invalid user or restaurant"}), 400
 
-    if user.claims_today >= 10:
-        return jsonify({"success": False, "message": "Daily limit reached"})
-    if user.tokens <= 0:
-        return jsonify({"success": False, "message": "No tokens left"})
-    if not restaurant or restaurant.tokens_left <= 0:
-        return jsonify({"success": False, "message": "Food unavailable"})
+    if user.tokens <= 0 or restaurant.tokens_left <= 0:
+        return jsonify({"success": False, "message": "No tokens left"}), 400
 
-    # Deduct tokens
     restaurant.tokens_left -= 1
     user.tokens -= 1
-    user.claims_today += 1
-
-    # ✅ Create new claim entry
-    claim = Claim(user_id=user.id, restaurant_id=restaurant.id)
-    db.session.add(claim)
+    db.session.add(Claim(user_id=user.id, restaurant_id=restaurant.id))
     db.session.commit()
+
+    claim = Claim.query.filter_by(user_id=user.id).order_by(Claim.id.desc()).first()
+    claim_url = f"http://127.0.0.1:5000/verify-claim/{claim.id}"
 
     return (
         jsonify(
             {
                 "success": True,
-                "message": "Food claimed!",
                 "claim_id": claim.id,
-                "user_id": user.id,
+                "claim_url": claim_url,
+                "user_tokens": user.tokens,
                 "restaurant": {
                     "id": restaurant.id,
                     "name": restaurant.name,
@@ -473,8 +474,12 @@ def get_restaurant_info(restaurant_id):
     )
 
 
-@app.route("/verify-claim", methods=["POST"])
+@app.route("/verify-claim", methods=["POST", "OPTIONS"])
 def verify_claim():
+    if request.method == "OPTIONS":
+        # ✅ Handle CORS preflight
+        return jsonify({"success": True}), 200
+
     data = request.get_json()
     claim_id = data.get("claim_id")
 
@@ -498,6 +503,46 @@ def verify_claim():
                     "name": claim.restaurant.name,
                     "food_type": claim.restaurant.food_type,
                 },
+            }
+        ),
+        200,
+    )
+
+
+@app.route("/restaurant/verify-user", methods=["POST"])
+def verify_user():
+    data = request.get_json()
+    user_id = data.get("user_id")
+    restaurant_id = data.get("restaurant_id")
+
+    user = User.query.get(user_id)
+    restaurant = Restaurant.query.get(restaurant_id)
+    if not user or not restaurant:
+        return jsonify({"success": False, "message": "Invalid user or restaurant"}), 400
+
+    refresh_daily_tokens(user)
+
+    if user.claims_today >= 10:
+        return jsonify({"success": False, "message": "Daily limit reached"}), 400
+    if user.tokens <= 0:
+        return jsonify({"success": False, "message": "No tokens left"}), 400
+    if restaurant.tokens_left <= 0:
+        return jsonify({"success": False, "message": "Food unavailable"}), 400
+
+    user.tokens -= 1
+    user.claims_today += 1
+    restaurant.tokens_left -= 1
+    claim = Claim(user_id=user.id, restaurant_id=restaurant.id, verified=True)
+    db.session.add(claim)
+    db.session.commit()
+
+    return (
+        jsonify(
+            {
+                "success": True,
+                "message": f"{user.name} successfully claimed {restaurant.food_type} from {restaurant.name}.",
+                "user": {"id": user.id, "name": user.name},
+                "restaurant": {"id": restaurant.id, "name": restaurant.name},
             }
         ),
         200,

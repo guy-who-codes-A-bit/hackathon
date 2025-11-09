@@ -40,7 +40,7 @@ export default function MapView() {
 
   // 🧠 Claim food function
   const handleClaim = async (restaurantId) => {
-    const userId = localStorage.getItem("user_id"); // set at login
+    const userId = localStorage.getItem("user_id");
     if (!userId) {
       alert("Please log in first.");
       navigate("/login");
@@ -55,7 +55,9 @@ export default function MapView() {
       });
 
       const data = await res.json();
+
       if (data.success) {
+        // ✅ Save claim data safely
         localStorage.setItem(
           "claim_data",
           JSON.stringify({
@@ -67,6 +69,27 @@ export default function MapView() {
             user_id: userId,
           })
         );
+
+        // ✅ Re-fetch restaurants to refresh tokens_left
+        fetch("http://127.0.0.1:5000/restaurants")
+          .then((res) => res.json())
+          .then((updated) => {
+            const normalized = (updated.restaurants || []).map((r, i) => ({
+              id: r.id ?? i + 1,
+              name: r.name || "Unnamed Restaurant",
+              food: r.food_type || "Assorted meals",
+              lat: r.lat ?? 51.046 + Math.random() * 0.01,
+              lon: r.lon ?? -114.07 + Math.random() * 0.01,
+              tokens_left: r.tokens_left ?? 0,
+              address: r.address || "No address listed",
+            }));
+            setRestaurants(normalized);
+            computeNearby(
+              userLocation || searchMarker || { lat: 51.046, lon: -114.07 }
+            );
+          })
+          .catch((err) => console.error("Error refreshing restaurants:", err));
+
         navigate("/qrpage");
       } else {
         alert("❌ " + data.message);
@@ -83,75 +106,27 @@ export default function MapView() {
       try {
         const res = await fetch("http://127.0.0.1:5000/restaurants");
         const data = await res.json();
-
-        // 🧩 Fallback if backend returns incomplete data or only one item
-        if (!Array.isArray(data) || data.length < 2) {
-          console.warn(
-            "⚠️ Backend returned too little data, using dummy fallback"
-          );
-          throw new Error("incomplete");
-        }
-
-        // 🧠 Normalize fields so frontend always has what it expects
-        const normalized = data.map((r, i) => ({
+        const normalized = (data.restaurants || []).map((r, i) => ({
           id: r.id ?? i + 1,
           name: r.name || "Unnamed Restaurant",
           food: r.food_type || "Assorted meals",
           lat: r.lat ?? 51.046 + Math.random() * 0.01,
           lon: r.lon ?? -114.07 + Math.random() * 0.01,
-          tokens_left: r.tokens_left,
+          tokens_left: r.tokens_left ?? 0,
           address: r.address || "No address listed",
         }));
-
         setRestaurants(normalized);
-        console.log("✅ Loaded from backend:", normalized);
       } catch (err) {
-        console.warn("⚠️ Using dummy restaurant data:", err.message);
-        // Dummy fallback
-        setRestaurants([
-          {
-            id: 1,
-            name: "McDonald's",
-            food: "Burgers & Fries",
-            lat: 51.046,
-            lon: -114.07,
-            tokens_left: 3,
-            address: "123 Main St, Calgary",
-          },
-          {
-            id: 2,
-            name: "COBS Bread",
-            food: "Fresh baked goods",
-            lat: 51.048,
-            lon: -114.068,
-            tokens_left: 2,
-            address: "456 Baker Ave, Calgary",
-          },
-          {
-            id: 3,
-            name: "Save On Foods",
-            food: "Groceries & sandwiches",
-            lat: 51.05,
-            lon: -114.066,
-            tokens_left: 1,
-            address: "789 Market Rd, Calgary",
-          },
-          {
-            id: 4,
-            name: "Freshii",
-            food: "Healthy bowls & wraps",
-            lat: 51.049,
-            lon: -114.071,
-            tokens_left: 2,
-            address: "999 8 Ave SW, Calgary",
-          },
-        ]);
+        console.warn("⚠️ Failed to load restaurants:", err);
       } finally {
         setLoading(false);
       }
     }
-
     loadRestaurants();
+
+    // 🕒 Optional: auto-refresh every 10s
+    const interval = setInterval(loadRestaurants, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   // 📍 Locate user
@@ -178,39 +153,7 @@ export default function MapView() {
     );
   };
 
-  // 📍 Handle search query with Mapbox Geocoding API
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-
-    const token = import.meta.env.VITE_MAPBOX_TOKEN;
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-      searchQuery
-    )}.json?access_token=${token}&limit=1`;
-
-    try {
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.features && data.features.length > 0) {
-        const { center, place_name } = data.features[0];
-        const coords = { lon: center[0], lat: center[1], name: place_name };
-        setSearchMarker(coords);
-        mapRef.current?.flyTo({
-          center: [coords.lon, coords.lat],
-          zoom: 14.5,
-          speed: 1.2,
-        });
-        computeNearby(coords);
-      } else {
-        alert("No results found.");
-      }
-    } catch (err) {
-      console.error("Geocoding error:", err);
-      alert("Failed to search address.");
-    }
-  };
-
-  // 🔍 Compute nearest restaurants to a location
+  // 🔍 Compute nearest restaurants
   const computeNearby = (coords) => {
     const sorted = restaurants
       .map((r) => ({
@@ -239,7 +182,6 @@ export default function MapView() {
         mapStyle="mapbox://styles/mapbox/light-v11"
         style={{ width: "100%", height: "100%" }}
       >
-        {/* Terrain + Nav Controls */}
         <Source
           id="mapbox-dem"
           type="raster-dem"
@@ -273,7 +215,7 @@ export default function MapView() {
           </Marker>
         ))}
 
-        {/* User or Search Marker */}
+        {/* User marker */}
         {userLocation && (
           <Marker
             latitude={userLocation.lat}
@@ -283,17 +225,8 @@ export default function MapView() {
             <div className="w-4 h-4 bg-blue-500 border-2 border-white rounded-full shadow-md animate-pulse"></div>
           </Marker>
         )}
-        {searchMarker && (
-          <Marker
-            latitude={searchMarker.lat}
-            longitude={searchMarker.lon}
-            anchor="center"
-          >
-            <div className="w-4 h-4 bg-yellow-500 border-2 border-white rounded-full shadow-md animate-bounce"></div>
-          </Marker>
-        )}
 
-        {/* Popup for restaurant */}
+        {/* Popup */}
         {selected && (
           <Popup
             latitude={selected.lat}
@@ -330,6 +263,18 @@ export default function MapView() {
         )}
       </Map>
 
+      {/* 🧹 Destroy WebGL when leaving */}
+      <script>
+        {`
+          window.addEventListener('beforeunload', () => {
+            const mapElement = document.querySelector('.mapboxgl-map');
+            if (mapElement && mapElement._map) {
+              mapElement._map.remove();
+            }
+          });
+        `}
+      </script>
+
       {/* Locate Me Button */}
       <button
         onClick={handleLocateMe}
@@ -338,9 +283,9 @@ export default function MapView() {
       >
         <LocateFixed className="text-green-600 w-6 h-6" />
       </button>
+
       {/* Sidebar */}
       <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md rounded-2xl shadow-md p-4 w-64 border border-gray-200">
-        {/* Header */}
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-gray-800 font-semibold text-sm">
             Nearby Restaurants
@@ -357,64 +302,6 @@ export default function MapView() {
           </button>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
-          <input
-            type="text"
-            placeholder="Search address..."
-            value={searchQuery}
-            onChange={async (e) => {
-              setSearchQuery(e.target.value);
-
-              // 🔍 Fetch suggestions live
-              if (e.target.value.length > 3) {
-                const res = await fetch(
-                  `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-                    e.target.value
-                  )}.json?access_token=${
-                    import.meta.env.VITE_MAPBOX_TOKEN
-                  }&autocomplete=true&limit=5`
-                );
-                const data = await res.json();
-                setSuggestions(data.features || []);
-              } else {
-                setSuggestions([]);
-              }
-            }}
-            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-400 outline-none"
-          />
-
-          {/* 🔽 Suggestion dropdown */}
-          {suggestions.length > 0 && (
-            <div className="absolute z-10 bg-white border border-gray-100 rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto">
-              {suggestions.map((s) => (
-                <div
-                  key={s.id}
-                  onClick={() => {
-                    const [lon, lat] = s.center;
-                    setSearchQuery(s.place_name);
-                    setSuggestions([]);
-                    const coords = { lat, lon };
-                    setSearchMarker(coords);
-                    mapRef.current?.flyTo({
-                      center: [lon, lat],
-                      zoom: 14.5,
-                      speed: 1.2,
-                    });
-                    computeNearby(coords);
-                  }}
-                  className="p-2 hover:bg-green-50 cursor-pointer"
-                >
-                  <p className="text-sm font-medium text-gray-900">{s.text}</p>
-                  <p className="text-xs text-gray-500">{s.place_name}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Nearby Restaurant List */}
         {nearby.length > 0 && (
           <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
             {nearby.map((r) => (
@@ -441,7 +328,6 @@ export default function MapView() {
         )}
       </div>
 
-      {/* Bottom Nav */}
       <BottomNav />
     </div>
   );
