@@ -9,6 +9,7 @@ import ForgetPassword from "./pages/ForgotPassword";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import Maps from "./pages/Maps";
+import EditProfile from "./pages/EditProfile";//NEW !!!! EDIT PROFILE
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/forgetpassword" element={<ForgetPassword />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/maps" element={<Maps />} />
+          <Route path="/profile/edit" element={<EditProfile />} /> 
         </Routes>
       </div>
     </BrowserRouter>
