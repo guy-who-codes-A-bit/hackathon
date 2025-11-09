@@ -13,10 +13,10 @@ export default function BottomNav() {
       
       {/* Home Link */}
       <Link
-        to="/"
+        to="/Home"
         className={`flex flex-col items-center text-xs pt-1 transition-colors duration-200 ${
           // Highlight Home if active
-          isActive("/") ? "text-green-600 font-bold" : "text-gray-900 font-medium"
+          isActive("/Home") ? "text-green-600 font-bold" : "text-gray-900 font-medium"
         }`}
       >
         <IoHomeOutline className="text-2xl mb-1" />

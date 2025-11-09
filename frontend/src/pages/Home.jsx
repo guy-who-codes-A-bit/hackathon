@@ -1,6 +1,6 @@
 import { useState } from "react";
 import BottomNav from "../components/BottomNav";
-
+import { useNavigate } from "react-router-dom";
 const dummyRestaurants = [
   { id: 1, name: "McDonalds", distance: "3933 University Ave NW", tokens: 2, url: "https://maps.app.goo.gl/1aHmrmqsDPxLFgwA6" },
   { id: 2, name: "COBS Bread", distance: "4023 University Ave NW", tokens: 2, url: "https://maps.app.goo.gl/c9hnPkUkzxST78Gr9"},
@@ -15,9 +15,11 @@ const dummyRestaurants = [
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate();
+  
 
   const handleProfileClick = () => {
-    alert("Profile clicked! (connect to backend later)");
+    navigate("/profile");
   };
 
 
