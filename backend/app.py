@@ -157,10 +157,14 @@ def google_callback():
 
     return f"""
     <script>
-        localStorage.setItem('user_id', '{user.id}');
-        localStorage.setItem('user_name', '{user.name}');
-        localStorage.setItem('tokens', '{user.tokens}');
-        window.location.href = 'http://localhost:5173/home';
+      const user = {{
+        id: '{user.id}',
+        name: '{user.name}',
+        email: '{user.email}',
+        tokens: {user.tokens}
+      }};
+      localStorage.setItem('user', JSON.stringify(user));
+      window.location.href = 'http://localhost:5173/home';
     </script>
     """
 
