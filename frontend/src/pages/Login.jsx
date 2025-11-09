@@ -7,7 +7,7 @@ export default function Login() {
       <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md">
         {/* Logo */}
         <div className="flex flex-col items-center space-y-2 mb-6">
-          <img src={logo} alt="RePlate Logo" className="w-20 h-20" />
+          <img src={logo} alt="RePlate Logo" className="w-4000 h-40" />
         </div>
 
         {/* Form Section */}
