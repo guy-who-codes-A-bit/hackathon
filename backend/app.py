@@ -173,7 +173,9 @@ def reset_password():
 @app.route("/restaurants", methods=["GET"])
 def get_restaurants():
     all_rest = Restaurant.query.all()
-    return jsonify(
+    return jsonify({
+        "count": len(all_rest),
+        "restaurants":
         [
             {
                 "id": r.id,
@@ -185,7 +187,7 @@ def get_restaurants():
                 "tokens_left": r.tokens_left,
             }
             for r in all_rest
-        ]
+        ]}
     )
 
 
