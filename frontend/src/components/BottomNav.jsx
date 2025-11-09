@@ -25,7 +25,7 @@ export default function BottomNav() {
 
       {/* Scan (Center QR Code) */}
       <Link
-        to="/scan"
+        to="/qrpage"
         className={`flex flex-col items-center -mt-8 ${
           // The scan button is always visually prominent, but we'll apply
           // a subtle highlight to its text if it's the active page.
