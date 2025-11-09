@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import logo from "../assets/RePlate.png";
+import googlelogo from "../assets/loginwgoogle.png";
 
 export default function Login() {
   return (
@@ -7,7 +8,7 @@ export default function Login() {
       <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md">
         {/* Logo */}
         <div className="flex flex-col items-center space-y-2 mb-6">
-          <img src={logo} alt="RePlate Logo" className="w-20 h-20" />
+          <img src={logo} alt="RePlate Logo" className="w-65 h-40" />
         </div>
 
         {/* Form Section */}
@@ -61,9 +62,9 @@ export default function Login() {
                        hover:bg-gray-50"
           >
             <img
-              src="loginwgoogle.png"
+              src={googlelogo}
               alt="Login with Google"
-              className="w-6 h-6"
+              className="w-40 h-6"
             />
           </button>
         </div>
