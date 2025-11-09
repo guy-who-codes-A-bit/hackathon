@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import logo from "../assets/RePlate.png";
+import googlelogo from "../assets/loginwgoogle.png";
 
 export default function Login() {
   return (
@@ -61,9 +62,9 @@ export default function Login() {
                        hover:bg-gray-50"
           >
             <img
-              src="loginwgoogle.png"
+              src={googlelogo}
               alt="Login with Google"
-              className="w-6 h-6"
+              className="w-40 h-6"
             />
           </button>
         </div>
