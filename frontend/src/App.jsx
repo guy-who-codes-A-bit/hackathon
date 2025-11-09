@@ -9,7 +9,7 @@ import QRPage from "./pages/QRPage";
 import ForgetPassword from "./pages/ForgotPassword";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
-
+import Maps from "./pages/Maps";
 
 function App() {
   return (
@@ -26,6 +26,7 @@ function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/forgetpassword" element={<ForgetPassword />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/maps" element={<Maps />} />
         </Routes>
       </div>
     </BrowserRouter>

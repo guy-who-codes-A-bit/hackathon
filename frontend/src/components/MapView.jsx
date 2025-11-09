@@ -1,22 +1,82 @@
-// frontend/src/components/MapView.jsx
 import "mapbox-gl/dist/mapbox-gl.css";
-import { Map, Marker, Popup } from "react-map-gl";
-import { useEffect, useState } from "react";
-import { MapPin } from "lucide-react";
-import QRCode from "react-qr-code";
+import {
+  Map,
+  Marker,
+  Popup,
+  Source,
+  Layer,
+  NavigationControl,
+} from "react-map-gl";
+import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { MapPin, LocateFixed, ChevronLeft, Search } from "lucide-react";
+import BottomNav from "../components/BottomNav";
+import { AddressAutofill } from "@mapbox/search-js-react";
+
+// Helper: Haversine distance (in km)
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default function MapView() {
   const [restaurants, setRestaurants] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [showQR, setShowQR] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
+  const [nearby, setNearby] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchMarker, setSearchMarker] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const mapRef = useRef(null);
+  const navigate = useNavigate();
 
-  // Fetch data from Flask backend
+  // 🗺️ Fetch restaurants
   useEffect(() => {
     fetch("http://127.0.0.1:5000/restaurants")
       .then((res) => res.json())
       .then((data) => {
-        setRestaurants(data);
+        setRestaurants(
+          data.length > 0
+            ? data
+            : [
+                {
+                  id: 1,
+                  name: "McDonalds",
+                  food: "Burgers & fries",
+                  lat: 51.046,
+                  lon: -114.07,
+                  tokens_left: 2,
+                  address: "123 Main St, Calgary",
+                },
+                {
+                  id: 2,
+                  name: "COBS Bread",
+                  food: "Fresh baked goods",
+                  lat: 51.048,
+                  lon: -114.068,
+                  tokens_left: 3,
+                  address: "456 Baker Ave, Calgary",
+                },
+                {
+                  id: 3,
+                  name: "Save On Foods",
+                  food: "Groceries & sandwiches",
+                  lat: 51.05,
+                  lon: -114.066,
+                  tokens_left: 1,
+                  address: "789 Market Rd, Calgary",
+                },
+              ]
+        );
         setLoading(false);
       })
       .catch((err) => {
@@ -25,90 +85,296 @@ export default function MapView() {
       });
   }, []);
 
-  const handleClaim = async (id) => {
-    try {
-      const res = await fetch("http://127.0.0.1:5000/claim", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ restaurant_id: id }),
-      });
-      const result = await res.json();
+  // 📍 Locate user
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported by this browser.");
+      return;
+    }
 
-      if (result.success) {
-        alert(`✅ ${result.message}! Tokens left: ${result.remaining}`);
-        setRestaurants((prev) =>
-          prev.map((r) =>
-            r.id === id ? { ...r, tokens_left: result.remaining } : r
-          )
-        );
-        setShowQR(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        setUserLocation(coords);
+        mapRef.current?.flyTo({
+          center: [coords.lon, coords.lat],
+          zoom: 14.5,
+          speed: 1.2,
+        });
+        computeNearby(coords);
+      },
+      (err) => {
+        console.error("Error getting location:", err);
+        alert("Could not get your location.");
+      }
+    );
+  };
+
+  // 📍 Handle search query with Mapbox Geocoding API
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    const token = import.meta.env.VITE_MAPBOX_TOKEN;
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+      searchQuery
+    )}.json?access_token=${token}&limit=1`;
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.features && data.features.length > 0) {
+        const { center, place_name } = data.features[0];
+        const coords = { lon: center[0], lat: center[1], name: place_name };
+        setSearchMarker(coords);
+        mapRef.current?.flyTo({
+          center: [coords.lon, coords.lat],
+          zoom: 14.5,
+          speed: 1.2,
+        });
+        computeNearby(coords);
       } else {
-        alert("❌ Food unavailable or already claimed.");
+        alert("No results found.");
       }
     } catch (err) {
-      console.error("Error claiming food:", err);
+      console.error("Geocoding error:", err);
+      alert("Failed to search address.");
     }
   };
 
-  if (loading) {
-    return <div className="text-center p-8">Loading map...</div>;
-  }
+  // 🔍 Compute nearest restaurants to a location
+  const computeNearby = (coords) => {
+    const sorted = restaurants
+      .map((r) => ({
+        ...r,
+        distance: getDistance(coords.lat, coords.lon, r.lat, r.lon),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 4);
+    setNearby(sorted);
+  };
+
+  if (loading) return <div className="text-center p-8">Loading map...</div>;
 
   return (
-    <div className="w-full h-full">
+    <div className="relative w-full h-screen">
+      {/* MAP */}
       <Map
+        ref={mapRef}
         mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
         initialViewState={{
-          latitude: 51.0447,
-          longitude: -114.0719,
-          zoom: 12,
+          latitude: 51.047,
+          longitude: -114.07,
+          zoom: 13.5,
+          pitch: 25,
         }}
+        mapStyle="mapbox://styles/mapbox/light-v11"
         style={{ width: "100%", height: "100%" }}
-        mapStyle="mapbox://styles/mapbox/streets-v12"
       >
+        {/* Terrain + Nav Controls */}
+        <Source
+          id="mapbox-dem"
+          type="raster-dem"
+          url="mapbox://mapbox.mapbox-terrain-dem-v1"
+          tileSize={512}
+          maxzoom={14}
+        />
+        <Layer
+          id="sky"
+          type="sky"
+          paint={{
+            "sky-type": "atmosphere",
+            "sky-atmosphere-sun": [0.0, 0.0],
+            "sky-atmosphere-sun-intensity": 15,
+          }}
+        />
+        <NavigationControl position="top-right" />
+
+        {/* Restaurant markers */}
         {restaurants.map((r) => (
           <Marker key={r.id} latitude={r.lat} longitude={r.lon} anchor="bottom">
-            <button onClick={() => setSelected(r)}>
-              <MapPin
-                size={28}
-                className="text-red-600 hover:scale-125 transition-transform"
-              />
-            </button>
+            <div
+              onClick={() => setSelected(r)}
+              className="cursor-pointer group relative flex flex-col items-center"
+            >
+              <div className="w-5 h-5 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full shadow-lg ring-2 ring-white group-hover:scale-125 transition-transform" />
+              <span className="absolute top-6 bg-white text-gray-800 text-xs px-2 py-1 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                {r.name}
+              </span>
+            </div>
           </Marker>
         ))}
 
+        {/* User or Search Marker */}
+        {userLocation && (
+          <Marker
+            latitude={userLocation.lat}
+            longitude={userLocation.lon}
+            anchor="center"
+          >
+            <div className="w-4 h-4 bg-blue-500 border-2 border-white rounded-full shadow-md animate-pulse"></div>
+          </Marker>
+        )}
+        {searchMarker && (
+          <Marker
+            latitude={searchMarker.lat}
+            longitude={searchMarker.lon}
+            anchor="center"
+          >
+            <div className="w-4 h-4 bg-yellow-500 border-2 border-white rounded-full shadow-md animate-bounce"></div>
+          </Marker>
+        )}
+
+        {/* Popup for restaurant */}
         {selected && (
           <Popup
             latitude={selected.lat}
             longitude={selected.lon}
             closeOnClick={false}
-            onClose={() => {
-              setSelected(null);
-              setShowQR(false);
-            }}
+            onClose={() => setSelected(null)}
             anchor="top"
           >
-            <div className="p-2 text-sm max-w-[200px]">
-              <h3 className="font-bold text-green-700">{selected.name}</h3>
-              <p>{selected.food}</p>
-              <p className="text-green-600 font-semibold">
-                {selected.tokens_left} tokens left
+            <div className="relative bg-white rounded-2xl shadow-xl border border-gray-100 w-[240px] p-4">
+              <button
+                onClick={() => setSelected(null)}
+                className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition"
+              >
+                ✕
+              </button>
+              <h3 className="font-semibold text-gray-900 mb-1">
+                {selected.name}
+              </h3>
+              <p className="text-gray-600 mb-1">{selected.food}</p>
+              <p className="text-green-600 text-sm font-medium mb-1">
+                🍱 {selected.tokens_left} food left
+              </p>
+              <p className="text-gray-500 text-xs mb-4">
+                📍 {selected.address}
               </p>
               <button
-                className="mt-2 w-full px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-                onClick={() => handleClaim(selected.id)}
+                onClick={() => navigate("/qrpage")}
+                className="w-full py-2 bg-[#6ECF68] text-white text-sm rounded-xl hover:bg-[#5BBA58] transition-all"
               >
                 Claim Food
               </button>
-              {showQR && (
-                <div className="mt-3 bg-white p-2 rounded">
-                  <QRCode value={`Claim-${selected.name}`} size={80} />
-                </div>
-              )}
             </div>
           </Popup>
         )}
       </Map>
+
+      {/* Locate Me Button */}
+      <button
+        onClick={handleLocateMe}
+        className="absolute bottom-24 right-4 bg-white p-3 rounded-full shadow-lg border border-gray-200 hover:bg-gray-100 transition-all"
+        title="Locate Me"
+      >
+        <LocateFixed className="text-green-600 w-6 h-6" />
+      </button>
+      {/* Sidebar */}
+      <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md rounded-2xl shadow-md p-4 w-64 border border-gray-200">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-gray-800 font-semibold text-sm">
+            Nearby Restaurants
+          </h2>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <ChevronLeft
+              className={`w-5 h-5 transition-transform ${
+                sidebarOpen ? "" : "rotate-180"
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search address..."
+            value={searchQuery}
+            onChange={async (e) => {
+              setSearchQuery(e.target.value);
+
+              // 🔍 Fetch suggestions live
+              if (e.target.value.length > 3) {
+                const res = await fetch(
+                  `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+                    e.target.value
+                  )}.json?access_token=${
+                    import.meta.env.VITE_MAPBOX_TOKEN
+                  }&autocomplete=true&limit=5`
+                );
+                const data = await res.json();
+                setSuggestions(data.features || []);
+              } else {
+                setSuggestions([]);
+              }
+            }}
+            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-400 outline-none"
+          />
+
+          {/* 🔽 Suggestion dropdown */}
+          {suggestions.length > 0 && (
+            <div className="absolute z-10 bg-white border border-gray-100 rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto">
+              {suggestions.map((s) => (
+                <div
+                  key={s.id}
+                  onClick={() => {
+                    const [lon, lat] = s.center;
+                    setSearchQuery(s.place_name);
+                    setSuggestions([]);
+                    const coords = { lat, lon };
+                    setSearchMarker(coords);
+                    mapRef.current?.flyTo({
+                      center: [lon, lat],
+                      zoom: 14.5,
+                      speed: 1.2,
+                    });
+                    computeNearby(coords);
+                  }}
+                  className="p-2 hover:bg-green-50 cursor-pointer"
+                >
+                  <p className="text-sm font-medium text-gray-900">{s.text}</p>
+                  <p className="text-xs text-gray-500">{s.place_name}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Nearby Restaurant List */}
+        {nearby.length > 0 && (
+          <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {nearby.map((r) => (
+              <li
+                key={r.id}
+                onClick={() => {
+                  mapRef.current?.flyTo({
+                    center: [r.lon, r.lat],
+                    zoom: 15,
+                    speed: 1.2,
+                  });
+                  setSelected(r);
+                }}
+                className="cursor-pointer border border-gray-100 rounded-lg p-3 hover:bg-green-50 transition"
+              >
+                <p className="font-semibold text-gray-900">{r.name}</p>
+                <p className="text-xs text-gray-600">{r.food}</p>
+                <p className="text-xs text-green-600">
+                  {r.distance?.toFixed(2)} km away
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Bottom Nav */}
+      <BottomNav />
     </div>
   );
 }

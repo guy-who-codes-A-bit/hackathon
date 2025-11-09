@@ -101,6 +101,7 @@ export default function Home() {
     };
     fetchData();
   }, []);
+
   const filteredRestaurants = dummyRestaurants.filter((r) =>
     r.name.toLowerCase().includes(searchTerm.toLowerCase())
   );

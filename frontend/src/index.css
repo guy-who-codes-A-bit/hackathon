@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+.mapboxgl-popup-tip {
+  display: none !important; /* removes the little arrow behind popup */
+}
+
+.mapboxgl-popup-content {
+  box-shadow: none !important; /* removes gray outer shadow */
+  background: transparent !important; /* prevent double white box */
+  padding: 0 !important; /* let your inner div control spacing */
+  border-radius: 0 !important;
+}
+
+.mapboxgl-popup-close-button {
+  display: none !important;
+}
