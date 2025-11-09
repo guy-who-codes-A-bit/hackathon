@@ -3,13 +3,16 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Landing from "./pages/Landing";
+import Signup from "./pages/Signup";
+import QRPage from "./pages/QRPage";
+import ForgetPassword from "./pages/ForgotPassword";
 
 function App() {
   return (
     <BrowserRouter>
       {/* app background */}
       <div className="min-h-screen bg-green-300">
-        xs
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
