@@ -9,6 +9,9 @@ import ForgetPassword from "./pages/ForgotPassword";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import Maps from "./pages/Maps";
+import RestaurantSignup from "./pages/restaurant/RestaurantSignup";
+import RestaurantLogin from "./pages/restaurant/RestaurantLogin";
+import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard";
 
 function App() {
   return (
@@ -25,6 +28,12 @@ function App() {
           <Route path="/forgetpassword" element={<ForgetPassword />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/maps" element={<Maps />} />
+          <Route path="/restaurant/signup" element={<RestaurantSignup />} />
+          <Route path="/restaurant/login" element={<RestaurantLogin />} />
+          <Route
+            path="/restaurant/dashboard"
+            element={<RestaurantDashboard />}
+          />
         </Routes>
       </div>
     </BrowserRouter>

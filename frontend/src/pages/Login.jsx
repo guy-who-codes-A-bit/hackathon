@@ -13,7 +13,9 @@ export default function Login() {
   const handleLogin = async () => {
     const res = await apiRequest("/login", "POST", { email, password });
     if (res.success) {
-      localStorage.setItem("user", JSON.stringify(res)); // save user data
+      localStorage.setItem("user_id", res.user_id);
+      localStorage.setItem("user_name", res.name);
+      localStorage.setItem("tokens", res.tokens);
       navigate("/home");
     } else setMessage("❌ " + res.message);
   };

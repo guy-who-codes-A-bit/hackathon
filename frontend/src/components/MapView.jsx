@@ -9,9 +9,8 @@ import {
 } from "react-map-gl";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, LocateFixed, ChevronLeft, Search } from "lucide-react";
+import { LocateFixed, ChevronLeft, Search } from "lucide-react";
 import BottomNav from "../components/BottomNav";
-import { AddressAutofill } from "@mapbox/search-js-react";
 
 // Helper: Haversine distance (in km)
 function getDistance(lat1, lon1, lat2, lon2) {
@@ -39,50 +38,119 @@ export default function MapView() {
   const mapRef = useRef(null);
   const navigate = useNavigate();
 
+  // 🧠 Claim food function
+  const handleClaim = async (restaurantId) => {
+    const userId = localStorage.getItem("user_id"); // set at login
+    if (!userId) {
+      alert("Please log in first.");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://127.0.0.1:5000/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, restaurant_id: restaurantId }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem(
+          "claim_data",
+          JSON.stringify({
+            restaurant_id: data.restaurant.id,
+            restaurant_name: data.restaurant.name,
+            food_type: data.restaurant.food_type,
+            tokens_left: data.restaurant.tokens_left,
+            user_id: userId,
+          })
+        );
+        navigate("/qrpage");
+      } else {
+        alert("❌ " + data.message);
+      }
+    } catch (err) {
+      console.error("Error claiming food:", err);
+      alert("⚠️ Server error while claiming.");
+    }
+  };
+
   // 🗺️ Fetch restaurants
   useEffect(() => {
-    fetch("http://127.0.0.1:5000/restaurants")
-      .then((res) => res.json())
-      .then((data) => {
-        setRestaurants(
-          data.length > 0
-            ? data
-            : [
-                {
-                  id: 1,
-                  name: "McDonalds",
-                  food: "Burgers & fries",
-                  lat: 51.046,
-                  lon: -114.07,
-                  tokens_left: 2,
-                  address: "123 Main St, Calgary",
-                },
-                {
-                  id: 2,
-                  name: "COBS Bread",
-                  food: "Fresh baked goods",
-                  lat: 51.048,
-                  lon: -114.068,
-                  tokens_left: 3,
-                  address: "456 Baker Ave, Calgary",
-                },
-                {
-                  id: 3,
-                  name: "Save On Foods",
-                  food: "Groceries & sandwiches",
-                  lat: 51.05,
-                  lon: -114.066,
-                  tokens_left: 1,
-                  address: "789 Market Rd, Calgary",
-                },
-              ]
-        );
+    async function loadRestaurants() {
+      try {
+        const res = await fetch("http://127.0.0.1:5000/restaurants");
+        const data = await res.json();
+
+        // 🧩 Fallback if backend returns incomplete data or only one item
+        if (!Array.isArray(data) || data.length < 2) {
+          console.warn(
+            "⚠️ Backend returned too little data, using dummy fallback"
+          );
+          throw new Error("incomplete");
+        }
+
+        // 🧠 Normalize fields so frontend always has what it expects
+        const normalized = data.map((r, i) => ({
+          id: r.id ?? i + 1,
+          name: r.name || "Unnamed Restaurant",
+          food: r.food_type || "Assorted meals",
+          lat: r.lat ?? 51.046 + Math.random() * 0.01,
+          lon: r.lon ?? -114.07 + Math.random() * 0.01,
+          tokens_left: r.tokens_left,
+          address: r.address || "No address listed",
+        }));
+
+        setRestaurants(normalized);
+        console.log("✅ Loaded from backend:", normalized);
+      } catch (err) {
+        console.warn("⚠️ Using dummy restaurant data:", err.message);
+        // Dummy fallback
+        setRestaurants([
+          {
+            id: 1,
+            name: "McDonald's",
+            food: "Burgers & Fries",
+            lat: 51.046,
+            lon: -114.07,
+            tokens_left: 3,
+            address: "123 Main St, Calgary",
+          },
+          {
+            id: 2,
+            name: "COBS Bread",
+            food: "Fresh baked goods",
+            lat: 51.048,
+            lon: -114.068,
+            tokens_left: 2,
+            address: "456 Baker Ave, Calgary",
+          },
+          {
+            id: 3,
+            name: "Save On Foods",
+            food: "Groceries & sandwiches",
+            lat: 51.05,
+            lon: -114.066,
+            tokens_left: 1,
+            address: "789 Market Rd, Calgary",
+          },
+          {
+            id: 4,
+            name: "Freshii",
+            food: "Healthy bowls & wraps",
+            lat: 51.049,
+            lon: -114.071,
+            tokens_left: 2,
+            address: "999 8 Ave SW, Calgary",
+          },
+        ]);
+      } finally {
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching restaurants:", err);
-        setLoading(false);
-      });
+      }
+    }
+
+    loadRestaurants();
   }, []);
 
   // 📍 Locate user
@@ -91,7 +159,6 @@ export default function MapView() {
       alert("Geolocation not supported by this browser.");
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const coords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
@@ -252,7 +319,7 @@ export default function MapView() {
                 📍 {selected.address}
               </p>
               <button
-                onClick={() => navigate("/qrpage")}
+                onClick={() => handleClaim(selected.id)}
                 className="w-full py-2 bg-[#6ECF68] text-white text-sm rounded-xl hover:bg-[#5BBA58] transition-all"
               >
                 Claim Food

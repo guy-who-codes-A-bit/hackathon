@@ -1,9 +1,9 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from datetime import datetime, timedelta
-from models import db, User, Restaurant, FoodItem, Claim
+from models import db, User, Restaurant, Claim
 from utils import send_mail, refresh_daily_tokens
-import random, string
+import random, string, requests
 
 app = Flask(__name__)
 CORS(app)
@@ -51,6 +51,7 @@ def login():
     return jsonify(
         {
             "success": True,
+            "user_id": user.id,  # 👈 include this
             "name": user.name,
             "tokens": user.tokens,
             "claims_today": user.claims_today,
@@ -158,69 +159,222 @@ def get_restaurants():
                 "lat": r.lat,
                 "lon": r.lon,
                 "address": r.address,
-                "food_items": [f.name for f in r.food_items],
+                "food_type": r.food_type,
+                "tokens_left": r.tokens_left,
             }
             for r in all_rest
         ]
     )
 
 
-@app.route("/restaurants/add", methods=["POST"])
-def add_restaurant():
-    data = request.get_json()
-    new_rest = Restaurant(
-        name=data["name"],
-        lat=data.get("lat"),
-        lon=data.get("lon"),
-        address=data.get("address", ""),
-    )
-    db.session.add(new_rest)
-    db.session.commit()
-    return jsonify({"success": True, "message": "Restaurant added!"})
+# 🏪 Restaurant signup
+GOOGLE_MAPS_API_KEY = "AIzaSyATR6kdSwjqk8iaZrgr8LGHcV4jZAggxCE"
 
 
-@app.route("/foods/add", methods=["POST"])
-def add_food():
+@app.route("/restaurant/signup", methods=["POST"])
+def restaurant_signup():
     data = request.get_json()
-    food = FoodItem(
-        name=data["name"],
-        tokens_left=data["tokens_left"],
-        price=data.get("price", 0),
-        restaurant_id=data["restaurant_id"],
+
+    # Extract fields
+    name = data.get("name")
+    email = data.get("email")
+    password = data.get("password")
+    address = data.get("address", "")
+    food_type = data.get("food_type", "")
+    tokens_left = data.get("tokens_left", 0)
+
+    # Validate
+    if not all([name, email, password, address]):
+        return jsonify({"success": False, "message": "Missing required fields"}), 400
+
+    # Check if email exists
+    if Restaurant.query.filter_by(email=email).first():
+        return jsonify({"success": False, "message": "Email already registered"}), 400
+
+    # 🔍 Geocode address using Google Maps API
+    lat, lon = None, None
+    try:
+        resp = requests.get(
+            "https://maps.googleapis.com/maps/api/geocode/json",
+            params={"address": address, "key": GOOGLE_MAPS_API_KEY},
+        )
+        if resp.status_code == 200:
+            results = resp.json().get("results")
+            if results:
+                location = results[0]["geometry"]["location"]
+                lat, lon = location["lat"], location["lng"]
+    except Exception as e:
+        print("Geocoding error:", e)
+
+    # 🏪 Create and save restaurant
+    new_restaurant = Restaurant(
+        name=name,
+        email=email,
+        password=password,
+        address=address,
+        lat=lat,
+        lon=lon,
+        food_type=food_type,
+        tokens_left=tokens_left,
     )
-    db.session.add(food)
+
+    db.session.add(new_restaurant)
     db.session.commit()
-    return jsonify({"success": True, "message": "Food added!"})
+
+    return (
+        jsonify(
+            {
+                "success": True,
+                "message": "Restaurant account created!",
+                "lat": lat,
+                "lon": lon,
+            }
+        ),
+        201,
+    )
+
+
+# 🔑 Restaurant login
+@app.route("/restaurant/login", methods=["POST"])
+def restaurant_login():
+    data = request.get_json()
+    email, password = data.get("email"), data.get("password")
+
+    restaurant = Restaurant.query.filter_by(email=email).first()
+    if not restaurant or restaurant.password != password:
+        return jsonify({"success": False, "message": "Invalid credentials"}), 401
+
+    return jsonify(
+        {
+            "success": True,
+            "id": restaurant.id,
+            "name": restaurant.name,
+            "address": restaurant.address,
+        }
+    )
 
 
 @app.route("/claim", methods=["POST"])
 def claim_food():
     data = request.get_json()
-    user = User.query.get(data["user_id"])
-    food = FoodItem.query.get(data["food_id"])
+    user_id = data.get("user_id")
+    restaurant_id = data.get("restaurant_id")
 
+    user = User.query.get(user_id)
+    restaurant = Restaurant.query.get(restaurant_id)
+
+    if not user or not restaurant:
+        return jsonify({"success": False, "message": "Invalid user or restaurant"}), 400
+
+    # 🌞 Ensure daily refresh (reset tokens if a new day)
     refresh_daily_tokens(user)
 
+    # 🧮 Check daily claim limit
     if user.claims_today >= 2:
-        return jsonify({"success": False, "message": "Daily limit reached"})
+        return jsonify({"success": False, "message": "Daily limit reached"}), 403
 
+    # 🧮 Check user tokens
     if user.tokens <= 0:
-        return jsonify({"success": False, "message": "No tokens left"})
+        return jsonify({"success": False, "message": "No tokens left"}), 403
 
-    if not food or food.tokens_left <= 0:
-        return jsonify({"success": False, "message": "Food unavailable"})
+    # 🧮 Check restaurant availability
+    if restaurant.tokens_left <= 0:
+        return (
+            jsonify({"success": False, "message": "No food left at this restaurant"}),
+            403,
+        )
 
-    food.tokens_left -= 1
+    # ✅ Process claim
+    restaurant.tokens_left -= 1
     user.tokens -= 1
     user.claims_today += 1
 
-    claim = Claim(user_id=user.id, food_id=food.id)
+    # Record claim event
+    claim = Claim(user_id=user.id, restaurant_id=restaurant.id)
     db.session.add(claim)
     db.session.commit()
 
     return jsonify(
-        {"success": True, "message": "Food claimed!", "remaining_tokens": user.tokens}
+        {
+            "success": True,
+            "message": f"Food claimed from {restaurant.name}!",
+            "remaining_tokens": user.tokens,
+            "restaurant": {
+                "id": restaurant.id,
+                "name": restaurant.name,
+                "food_type": restaurant.food_type,
+                "tokens_left": restaurant.tokens_left,
+            },
+        }
     )
+
+
+@app.route("/restaurant/update-offer", methods=["POST"])
+def restaurant_update_offer():
+    data = request.get_json()
+    restaurant_id = data.get("restaurant_id")
+    food_type = data.get("food_type")
+    tokens_left = data.get("tokens_left", 0)
+
+    restaurant = Restaurant.query.get(restaurant_id)
+    if not restaurant:
+        return jsonify({"success": False, "message": "Restaurant not found"}), 404
+
+    if not food_type:
+        return jsonify({"success": False, "message": "Food type is required"}), 400
+
+    # update restaurant offer
+    restaurant.food_type = food_type
+    restaurant.tokens_left = tokens_left
+    db.session.commit()
+
+    return (
+        jsonify(
+            {
+                "success": True,
+                "message": f"Offer updated! Now offering {food_type} with {tokens_left} servings left.",
+            }
+        ),
+        200,
+    )
+
+
+@app.route("/restaurant/<int:restaurant_id>", methods=["GET"])
+def get_restaurant_info(restaurant_id):
+    """Return a single restaurant’s food type and token info."""
+    restaurant = Restaurant.query.get(restaurant_id)
+
+    if not restaurant:
+        return jsonify({"success": False, "message": "Restaurant not found"}), 404
+
+    return jsonify(
+        {
+            "success": True,
+            "restaurant": {
+                "id": restaurant.id,
+                "name": restaurant.name,
+                "address": restaurant.address,
+                "food_type": getattr(restaurant, "food_type", "Assorted meals"),
+                "tokens_left": getattr(restaurant, "tokens_left", 0),
+                "lat": restaurant.lat,
+                "lon": restaurant.lon,
+            },
+        }
+    )
+
+
+@app.route("/verify-claim", methods=["POST"])
+def verify_claim():
+    data = request.get_json()
+    claim_id = data.get("claim_id")
+
+    claim = Claim.query.get(claim_id)
+    if not claim:
+        return jsonify({"success": False, "message": "Invalid claim"}), 400
+
+    claim.verified = True
+    db.session.commit()
+    return jsonify({"success": True, "message": "Claim verified successfully!"})
 
 
 if __name__ == "__main__":
