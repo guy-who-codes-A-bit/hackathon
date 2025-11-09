@@ -13,6 +13,7 @@ import EditProfile from "./pages/EditProfile"; //NEW !!!! EDIT PROFILE
 import RestaurantSignup from "./pages/restaurant/RestaurantSignup";
 import RestaurantLogin from "./pages/restaurant/RestaurantLogin";
 import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard";
+import RestaurantScanner from "./pages/restaurant/RestaurantScanner";
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
           <Route path="/profile/edit" element={<EditProfile />} />
           <Route path="/restaurant/signup" element={<RestaurantSignup />} />
           <Route path="/restaurant/login" element={<RestaurantLogin />} />
+          <Route path="/restaurant/scanner" element={<RestaurantScanner />} />
           <Route
             path="/restaurant/dashboard"
             element={<RestaurantDashboard />}

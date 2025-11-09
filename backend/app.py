@@ -279,55 +279,44 @@ def restaurant_login():
 @app.route("/claim", methods=["POST"])
 def claim_food():
     data = request.get_json()
-    user_id = data.get("user_id")
-    restaurant_id = data.get("restaurant_id")
+    user = db.session.get(User, data.get("user_id"))
+    restaurant = db.session.get(Restaurant, data.get("restaurant_id"))
 
-    user = User.query.get(user_id)
-    restaurant = Restaurant.query.get(restaurant_id)
-
-    if not user or not restaurant:
-        return jsonify({"success": False, "message": "Invalid user or restaurant"}), 400
-
-    # 🌞 Ensure daily refresh (reset tokens if a new day)
     refresh_daily_tokens(user)
 
-    # 🧮 Check daily claim limit
-    if user.claims_today >= 2:
-        return jsonify({"success": False, "message": "Daily limit reached"}), 403
-
-    # 🧮 Check user tokens
+    if user.claims_today >= 10:
+        return jsonify({"success": False, "message": "Daily limit reached"})
     if user.tokens <= 0:
-        return jsonify({"success": False, "message": "No tokens left"}), 403
+        return jsonify({"success": False, "message": "No tokens left"})
+    if not restaurant or restaurant.tokens_left <= 0:
+        return jsonify({"success": False, "message": "Food unavailable"})
 
-    # 🧮 Check restaurant availability
-    if restaurant.tokens_left <= 0:
-        return (
-            jsonify({"success": False, "message": "No food left at this restaurant"}),
-            403,
-        )
-
-    # ✅ Process claim
+    # Deduct tokens
     restaurant.tokens_left -= 1
     user.tokens -= 1
     user.claims_today += 1
 
-    # Record claim event
+    # ✅ Create new claim entry
     claim = Claim(user_id=user.id, restaurant_id=restaurant.id)
     db.session.add(claim)
     db.session.commit()
 
-    return jsonify(
-        {
-            "success": True,
-            "message": f"Food claimed from {restaurant.name}!",
-            "remaining_tokens": user.tokens,
-            "restaurant": {
-                "id": restaurant.id,
-                "name": restaurant.name,
-                "food_type": restaurant.food_type,
-                "tokens_left": restaurant.tokens_left,
-            },
-        }
+    return (
+        jsonify(
+            {
+                "success": True,
+                "message": "Food claimed!",
+                "claim_id": claim.id,
+                "user_id": user.id,
+                "restaurant": {
+                    "id": restaurant.id,
+                    "name": restaurant.name,
+                    "food_type": restaurant.food_type,
+                    "tokens_left": restaurant.tokens_left,
+                },
+            }
+        ),
+        200,
     )
 
 
@@ -392,11 +381,43 @@ def verify_claim():
 
     claim = Claim.query.get(claim_id)
     if not claim:
-        return jsonify({"success": False, "message": "Invalid claim"}), 400
+        return jsonify({"success": False, "message": "Invalid claim ID"}), 400
+    if claim.verified:
+        return jsonify({"success": False, "message": "Already verified"}), 400
 
     claim.verified = True
     db.session.commit()
-    return jsonify({"success": True, "message": "Claim verified successfully!"})
+
+    return (
+        jsonify(
+            {
+                "success": True,
+                "message": "Claim verified successfully!",
+                "user": {"id": claim.user.id, "name": claim.user.name},
+                "restaurant": {
+                    "id": claim.restaurant.id,
+                    "name": claim.restaurant.name,
+                    "food_type": claim.restaurant.food_type,
+                },
+            }
+        ),
+        200,
+    )
+
+
+@app.route("/claim-status/<int:claim_id>", methods=["GET"])
+def claim_status(claim_id):
+    claim = Claim.query.get(claim_id)
+    if not claim:
+        return jsonify({"success": False, "message": "Claim not found"}), 404
+
+    return jsonify(
+        {
+            "success": True,
+            "verified": claim.verified,
+            "timestamp": claim.timestamp,
+        }
+    )
 
 
 if __name__ == "__main__":

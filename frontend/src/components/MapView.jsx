@@ -59,6 +59,7 @@ export default function MapView() {
         localStorage.setItem(
           "claim_data",
           JSON.stringify({
+            claim_id: data.claim_id,
             restaurant_id: data.restaurant.id,
             restaurant_name: data.restaurant.name,
             food_type: data.restaurant.food_type,

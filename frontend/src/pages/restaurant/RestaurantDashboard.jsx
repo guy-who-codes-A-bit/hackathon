@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
-import { RefreshCcw, Edit3 } from "lucide-react";
+import { RefreshCcw, Edit3, Camera, Star } from "lucide-react";
+import RestaurantScanner from "./RestaurantScanner";
 
 export default function RestaurantDashboard() {
   const [restaurant, setRestaurant] = useState(null);
   const [foodType, setFoodType] = useState("");
   const [tokensLeft, setTokensLeft] = useState(0);
   const [status, setStatus] = useState("");
+  const [showScanner, setShowScanner] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const restaurantId = localStorage.getItem("restaurant_id");
   const restaurantName = localStorage.getItem("restaurant_name");
 
-  // Fetch restaurant info
+  // 🧭 Fetch restaurant info
   const fetchRestaurant = async () => {
     setLoading(true);
     try {
@@ -27,15 +29,16 @@ export default function RestaurantDashboard() {
     } catch (err) {
       console.error("Error fetching restaurant:", err);
       setStatus("Failed to load restaurant info.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
     fetchRestaurant();
   }, []);
 
-  // Update offer (food type + tokens)
+  // 🧁 Update Offer
   const handleUpdateOffer = async () => {
     if (!foodType.trim()) {
       setStatus("Please enter a food type.");
@@ -56,7 +59,7 @@ export default function RestaurantDashboard() {
 
       if (data.success) {
         setStatus(`✅ ${data.message}`);
-        fetchRestaurant(); // refresh display
+        fetchRestaurant();
       } else {
         setStatus(`❌ ${data.message}`);
       }
@@ -66,49 +69,78 @@ export default function RestaurantDashboard() {
     }
   };
 
-  if (loading) {
+  if (loading)
     return (
       <div className="min-h-screen bg-[#F4FFF4] flex items-center justify-center">
-        <p className="text-gray-600">Loading your dashboard...</p>
+        <p className="text-gray-600 text-lg">Loading your dashboard...</p>
       </div>
     );
-  }
+
+  // ✨ Stats Cards
+  const StatCard = ({ icon, label, value }) => (
+    <div className="bg-white rounded-2xl shadow-md p-4 text-center">
+      <div className="text-3xl mb-1">{icon}</div>
+      <p className="text-2xl font-bold text-[#6ECF68]">{value}</p>
+      <p className="text-xs text-gray-500">{label}</p>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#F4FFF4] flex justify-center py-6 px-3">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-md p-6">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">
-              {restaurantName || "RePlate Partner"}
-            </h1>
-            <p className="text-xs text-gray-500">
-              {new Date().toLocaleDateString()}
-            </p>
-          </div>
-          <button
-            onClick={fetchRestaurant}
-            className="p-2 bg-white border border-gray-200 rounded-full hover:bg-gray-100"
-            title="Refresh"
-          >
-            <RefreshCcw size={16} className="text-gray-600" />
-          </button>
+    <div className="min-h-screen bg-[#F4FFF4] flex flex-col pb-20">
+      {/* Header */}
+      <div className="bg-white shadow-sm px-6 py-4 sticky top-0 z-10 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">
+            {restaurantName || "Restaurant Dashboard"}
+          </h1>
+          <p className="text-xs text-gray-500">
+            {new Date().toLocaleDateString()}
+          </p>
+        </div>
+        <button
+          onClick={fetchRestaurant}
+          className="p-2 bg-white border border-gray-200 rounded-full hover:bg-gray-100"
+          title="Refresh"
+        >
+          <RefreshCcw size={18} className="text-gray-600" />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 px-6 py-6 space-y-6">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard
+            icon="🍱"
+            label="Tokens Left"
+            value={restaurant?.tokens_left || 0}
+          />
+          <StatCard
+            icon="✅"
+            label="Today's Claims"
+            value={restaurant?.claims?.length || 0}
+          />
+          <StatCard icon="⭐" label="Daily Limit" value="10" />
         </div>
 
         {/* Current Offer Card */}
-        <div className="border border-green-100 rounded-2xl p-4 bg-[#F9FFF9] mb-5">
-          <h2 className="text-lg font-semibold text-gray-800 mb-1">
-            Current Offer
+        <div className="bg-white rounded-2xl shadow-md p-6">
+          <h2 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+            🏪 Current Offer
           </h2>
           {restaurant?.food_type ? (
-            <div>
-              <p className="text-gray-700 mb-1">
+            <div className="text-gray-700 space-y-1">
+              <p>
                 🍽️ <span className="font-medium">{restaurant.food_type}</span>
               </p>
-              <p className="text-gray-600 mb-1">
+              <p>
                 🍱 Tokens Left:{" "}
-                <span className="font-medium">{restaurant.tokens_left}</span>
+                <span className="font-semibold text-[#6ECF68]">
+                  {restaurant.tokens_left}
+                </span>
+              </p>
+              <p className="text-xs text-gray-500 italic mt-1">
+                Edit your offer anytime below.
               </p>
             </div>
           ) : (
@@ -116,17 +148,22 @@ export default function RestaurantDashboard() {
           )}
         </div>
 
-        {/* Update Section */}
-        <div className="mb-4">
+        {/* Offer Update Section */}
+        <div className="bg-white rounded-2xl shadow-md p-6">
+          <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            ✏️ Update Offer
+          </h2>
+
           <label className="block text-gray-700 font-medium mb-2">
-            Update Food Type
+            Food Type
           </label>
           <input
             type="text"
             value={foodType}
             onChange={(e) => setFoodType(e.target.value)}
-            placeholder="e.g., Coffee & Pastry"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 mb-3 focus:ring-2 focus:ring-green-400 outline-none"
+            placeholder="e.g., Sandwich & Soup Combo"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 mb-3 
+                       focus:ring-2 focus:ring-green-400 outline-none"
           />
 
           <label className="block text-gray-700 font-medium mb-2">
@@ -137,12 +174,14 @@ export default function RestaurantDashboard() {
             value={tokensLeft}
             onChange={(e) => setTokensLeft(e.target.value)}
             placeholder="e.g., 5"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 mb-5 focus:ring-2 focus:ring-green-400 outline-none"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 mb-5 
+                       focus:ring-2 focus:ring-green-400 outline-none"
           />
 
           <button
             onClick={handleUpdateOffer}
-            className="w-full bg-[#6ECF68] text-white font-semibold rounded-xl py-3 hover:bg-[#5BBA58] transition flex items-center justify-center gap-2"
+            className="w-full bg-[#6ECF68] text-white font-semibold rounded-xl py-3 
+                       hover:bg-[#5BBA58] transition flex items-center justify-center gap-2"
           >
             <Edit3 size={16} />
             Update Offer
@@ -150,6 +189,33 @@ export default function RestaurantDashboard() {
 
           {status && (
             <p className="text-center text-sm mt-4 text-gray-700">{status}</p>
+          )}
+        </div>
+
+        {/* Scanner Section */}
+        <div className="bg-white rounded-2xl shadow-md p-6 text-center">
+          <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center justify-center gap-2">
+            <Camera size={18} /> Scan User QR
+          </h2>
+          {!showScanner ? (
+            <button
+              onClick={() => setShowScanner(true)}
+              className="bg-[#6ECF68] text-white px-6 py-3 rounded-xl font-semibold 
+                         hover:bg-[#5BBA58] transition-all shadow-sm"
+            >
+              Open Scanner
+            </button>
+          ) : (
+            <div className="mt-4">
+              <RestaurantScanner />
+              <button
+                onClick={() => setShowScanner(false)}
+                className="mt-4 bg-gray-200 text-gray-800 px-6 py-2 rounded-xl font-semibold 
+                           hover:bg-gray-300 transition"
+              >
+                Close Scanner
+              </button>
+            </div>
           )}
         </div>
       </div>
