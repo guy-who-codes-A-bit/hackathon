@@ -33,6 +33,7 @@ export default function MapView() {
   const [userLocation, setUserLocation] = useState(null);
   const [nearby, setNearby] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [searchMarker, setSearchMarker] = useState(null);
 
   // 🔎 new: search
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,8 +90,7 @@ export default function MapView() {
             setRestaurants(normalized);
 
             // recompute nearby using latest position
-            const base =
-              userLocation || { lat: 51.046, lon: -114.07 };
+            const base = userLocation || { lat: 51.046, lon: -114.07 };
             computeNearby(normalized, base);
           })
           .catch((err) => console.error("Error refreshing restaurants:", err));
@@ -166,6 +166,50 @@ export default function MapView() {
     );
   };
 
+  // 📍 Handle search query with Mapbox Geocoding API
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+
+    if (!searchQuery.trim()) return;
+
+    const token = import.meta.env.VITE_MAPBOX_TOKEN;
+
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+      searchQuery
+    )}.json?access_token=${token}&limit=1`;
+
+    try {
+      const res = await fetch(url);
+
+      const data = await res.json();
+
+      if (data.features && data.features.length > 0) {
+        const { center, place_name } = data.features[0];
+
+        const coords = { lon: center[0], lat: center[1], name: place_name };
+
+        setSearchMarker(restaurants, coords);
+
+        mapRef.current?.flyTo({
+          center: [coords.lon, coords.lat],
+
+          zoom: 14.5,
+
+          speed: 1.2,
+        });
+
+        computeNearby(coords);
+      } else {
+        alert("No results found.");
+      }
+    } catch (err) {
+      console.error("Geocoding error:", err);
+
+      alert("Failed to search address.");
+    }
+  };
+
   // 🔍 Compute nearest restaurants
   const computeNearby = (list, coords) => {
     const sorted = list
@@ -189,9 +233,7 @@ export default function MapView() {
     }
 
     const filtered = restaurants
-      .filter((r) =>
-        r.name.toLowerCase().includes(val.trim().toLowerCase())
-      )
+      .filter((r) => r.name.toLowerCase().includes(val.trim().toLowerCase()))
       .slice(0, 5);
     setSuggestions(filtered);
   };
@@ -272,6 +314,16 @@ export default function MapView() {
           </Marker>
         )}
 
+        {searchMarker && (
+          <Marker
+            latitude={searchMarker.lat}
+            longitude={searchMarker.lon}
+            anchor="bottom"
+          >
+            <div className="w-5 h-5 bg-orange-500 border-2 border-white rounded-full shadow-lg animate-bounce" />
+          </Marker>
+        )}
+
         {/* Popup */}
         {selected && (
           <Popup
@@ -336,39 +388,81 @@ export default function MapView() {
           </button>
         </div>
 
-        {/* 🔎 Search box */}
+        {/* Search Bar */}
+
         <div className="relative mb-3">
-          <span className="absolute left-3 top-2.5 text-gray-400">
-            <Search className="w-4 h-4" />
-          </span>
+          <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+
           <input
+            type="text"
+            placeholder="Search address..."
             value={searchQuery}
-            onChange={handleSearchChange}
-            placeholder="Search restaurant..."
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-white"
+            onChange={async (e) => {
+              setSearchQuery(e.target.value);
+
+              // 🔍 Fetch suggestions live
+
+              if (e.target.value.length > 3) {
+                const res = await fetch(
+                  `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+                    e.target.value
+                  )}.json?access_token=${
+                    import.meta.env.VITE_MAPBOX_TOKEN
+                  }&autocomplete=true&limit=5`
+                );
+
+                const data = await res.json();
+
+                setSuggestions(data.features || []);
+              } else {
+                setSuggestions([]);
+              }
+            }}
+            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-400 outline-none"
           />
-          {/* suggestions */}
+
+          {/* 🔽 Suggestion dropdown */}
+
           {suggestions.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-md max-h-40 overflow-y-auto">
+            <div className="absolute z-10 bg-white border border-gray-100 rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto">
               {suggestions.map((s) => (
-                <button
+                <div
                   key={s.id}
-                  onClick={() => handleSuggestionClick(s)}
-                  className="w-full text-left px-3 py-2 hover:bg-green-50 text-sm"
+                  onClick={() => {
+                    const [lon, lat] = s.center;
+
+                    setSearchQuery(s.place_name);
+
+                    setSuggestions([]);
+
+                    const coords = { lat, lon };
+
+                    setSearchMarker(coords);
+
+                    mapRef.current?.flyTo({
+                      center: [lon, lat],
+
+                      zoom: 14.5,
+
+                      speed: 1.2,
+                    });
+
+                    computeNearby(restaurants, coords);
+                  }}
+                  className="p-2 hover:bg-green-50 cursor-pointer"
                 >
-                  {s.name}
-                  {s.tokens_left > 0 && (
-                    <span className="ml-2 text-xs text-green-600">
-                      {s.tokens_left} left
-                    </span>
-                  )}
-                </button>
+                  <p className="text-sm font-medium text-gray-900">{s.text}</p>
+
+                  <p className="text-xs text-gray-500">{s.place_name}</p>
+                </div>
               ))}
             </div>
           )}
         </div>
 
-        {sidebarOpen && nearby.length > 0 && (
+        {/* Nearby Restaurant List */}
+
+        {nearby.length > 0 && (
           <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
             {nearby.map((r) => (
               <li
@@ -376,15 +470,20 @@ export default function MapView() {
                 onClick={() => {
                   mapRef.current?.flyTo({
                     center: [r.lon, r.lat],
+
                     zoom: 15,
+
                     speed: 1.2,
                   });
+
                   setSelected(r);
                 }}
                 className="cursor-pointer border border-gray-100 rounded-lg p-3 hover:bg-green-50 transition"
               >
                 <p className="font-semibold text-gray-900">{r.name}</p>
+
                 <p className="text-xs text-gray-600">{r.food}</p>
+
                 <p className="text-xs text-green-600">
                   {r.distance?.toFixed(2)} km away
                 </p>
@@ -393,6 +492,8 @@ export default function MapView() {
           </ul>
         )}
       </div>
+
+      {/* Bottom Nav */}
 
       <BottomNav />
     </div>

@@ -299,7 +299,11 @@ def get_restaurants():
 
 
 # 🏪 Restaurant signup
-GOOGLE_MAPS_API_KEY = "AIzaSyATR6kdSwjqk8iaZrgr8LGHcV4jZAggxCE"
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+if not GOOGLE_MAPS_API_KEY:
+    raise RuntimeError(
+        "GOOGLE_MAPS_API_KEY environment variable is required. Create a `backend/.env` file or set the environment variable."
+    )
 
 
 @app.route("/restaurant/signup", methods=["POST"])
