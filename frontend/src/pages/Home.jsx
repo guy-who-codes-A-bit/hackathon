@@ -1,6 +1,6 @@
 import { useState } from "react";
 import BottomNav from "../components/BottomNav";
-
+import { useNavigate } from "react-router-dom";
 const dummyRestaurants = [
   { id: 1, name: "McDonalds", distance: "0.8 km", tokens: 2 },
   { id: 2, name: "COBS Bread", distance: "0.2 km", tokens: 2 },
@@ -15,9 +15,11 @@ const dummyRestaurants = [
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate();
+  
 
   const handleProfileClick = () => {
-    alert("Profile clicked! (connect to backend later)");
+    navigate("/profile");
   };
 
   const buildGmapsLink = (name) =>
