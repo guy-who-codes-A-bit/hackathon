@@ -1,3 +1,4 @@
+// frontend/src/components/MapView.jsx
 import "mapbox-gl/dist/mapbox-gl.css";
 import {
   Map,
@@ -32,9 +33,11 @@ export default function MapView() {
   const [userLocation, setUserLocation] = useState(null);
   const [nearby, setNearby] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // 🔎 new: search
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchMarker, setSearchMarker] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
+
   const mapRef = useRef(null);
   const navigate = useNavigate();
 
@@ -84,9 +87,11 @@ export default function MapView() {
               address: r.address || "No address listed",
             }));
             setRestaurants(normalized);
-            computeNearby(
-              userLocation || searchMarker || { lat: 51.046, lon: -114.07 }
-            );
+
+            // recompute nearby using latest position
+            const base =
+              userLocation || { lat: 51.046, lon: -114.07 };
+            computeNearby(normalized, base);
           })
           .catch((err) => console.error("Error refreshing restaurants:", err));
 
@@ -116,6 +121,14 @@ export default function MapView() {
           address: r.address || "No address listed",
         }));
         setRestaurants(normalized);
+
+        // if we already know user location, compute nearby
+        if (userLocation) {
+          computeNearby(normalized, userLocation);
+        } else {
+          // fallback center (Calgary-ish)
+          computeNearby(normalized, { lat: 51.046, lon: -114.07 });
+        }
       } catch (err) {
         console.warn("⚠️ Failed to load restaurants:", err);
       } finally {
@@ -127,7 +140,7 @@ export default function MapView() {
     // 🕒 Optional: auto-refresh every 10s
     const interval = setInterval(loadRestaurants, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 📍 Locate user
   const handleLocateMe = () => {
@@ -144,7 +157,7 @@ export default function MapView() {
           zoom: 14.5,
           speed: 1.2,
         });
-        computeNearby(coords);
+        computeNearby(restaurants, coords);
       },
       (err) => {
         console.error("Error getting location:", err);
@@ -154,8 +167,8 @@ export default function MapView() {
   };
 
   // 🔍 Compute nearest restaurants
-  const computeNearby = (coords) => {
-    const sorted = restaurants
+  const computeNearby = (list, coords) => {
+    const sorted = list
       .map((r) => ({
         ...r,
         distance: getDistance(coords.lat, coords.lon, r.lat, r.lon),
@@ -165,11 +178,44 @@ export default function MapView() {
     setNearby(sorted);
   };
 
+  // 🔎 Handle search typing
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+
+    if (!val.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    const filtered = restaurants
+      .filter((r) =>
+        r.name.toLowerCase().includes(val.trim().toLowerCase())
+      )
+      .slice(0, 5);
+    setSuggestions(filtered);
+  };
+
+  // 🔎 When clicking a suggestion
+  const handleSuggestionClick = (r) => {
+    setSelected(r);
+    setSearchQuery(r.name);
+    setSuggestions([]);
+
+    mapRef.current?.flyTo({
+      center: [r.lon, r.lat],
+      zoom: 15,
+      speed: 1.2,
+    });
+
+    // recompute nearby around this restaurant
+    computeNearby(restaurants, { lat: r.lat, lon: r.lon });
+  };
+
   if (loading) return <div className="text-center p-8">Loading map...</div>;
 
   return (
     <div className="relative w-full h-screen">
-      {/* MAP */}
       <Map
         ref={mapRef}
         mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
@@ -263,18 +309,6 @@ export default function MapView() {
         )}
       </Map>
 
-      {/* 🧹 Destroy WebGL when leaving */}
-      <script>
-        {`
-          window.addEventListener('beforeunload', () => {
-            const mapElement = document.querySelector('.mapboxgl-map');
-            if (mapElement && mapElement._map) {
-              mapElement._map.remove();
-            }
-          });
-        `}
-      </script>
-
       {/* Locate Me Button */}
       <button
         onClick={handleLocateMe}
@@ -284,7 +318,7 @@ export default function MapView() {
         <LocateFixed className="text-green-600 w-6 h-6" />
       </button>
 
-      {/* Sidebar */}
+      {/* Sidebar with search + nearby */}
       <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md rounded-2xl shadow-md p-4 w-64 border border-gray-200">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-gray-800 font-semibold text-sm">
@@ -302,7 +336,39 @@ export default function MapView() {
           </button>
         </div>
 
-        {nearby.length > 0 && (
+        {/* 🔎 Search box */}
+        <div className="relative mb-3">
+          <span className="absolute left-3 top-2.5 text-gray-400">
+            <Search className="w-4 h-4" />
+          </span>
+          <input
+            value={searchQuery}
+            onChange={handleSearchChange}
+            placeholder="Search restaurant..."
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-white"
+          />
+          {/* suggestions */}
+          {suggestions.length > 0 && (
+            <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-md max-h-40 overflow-y-auto">
+              {suggestions.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => handleSuggestionClick(s)}
+                  className="w-full text-left px-3 py-2 hover:bg-green-50 text-sm"
+                >
+                  {s.name}
+                  {s.tokens_left > 0 && (
+                    <span className="ml-2 text-xs text-green-600">
+                      {s.tokens_left} left
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {sidebarOpen && nearby.length > 0 && (
           <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
             {nearby.map((r) => (
               <li
