@@ -6,12 +6,23 @@ from utils import send_mail, refresh_daily_tokens
 import random, string, requests
 from datetime import datetime, timedelta
 import threading
+from authlib.integrations.flask_client import OAuth
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
+
 
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///replate.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")  # Add this line
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # Add this
+app.config["SESSION_COOKIE_SECURE"] = False    # Add this (set True in production with HTTPS)
+
+
 db.init_app(app)
 
 verification_codes = {}
@@ -61,6 +72,92 @@ def login():
             "claims_today": user.claims_today,
         }
     )
+
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
+
+@app.route('/login/google')
+def google_login():
+    redirect_uri = "http://localhost:5000/auth/google/callback"
+    return google.authorize_redirect(redirect_uri)
+
+@app.route("/auth/google/callback")
+def google_callback():
+    try:
+        token = google.authorize_access_token()
+        user_info = token.get('userinfo')  # This might be None
+        
+        # If userinfo is not in token, fetch it manually
+        if not user_info:
+            userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+            headers = {'Authorization': f'Bearer {token.get("access_token")}'}
+            user_response = requests.get(userinfo_url, headers=headers)
+            user_info = user_response.json()
+            
+    except Exception as e:
+        print(f"OAuth error: {e}")  # Debug print
+        # Fallback: manually parse the callback
+        code = request.args.get('code')
+        if not code:
+            return jsonify({"success": False, "message": "No authorization code"}), 400
+        
+        # Exchange code for token manually
+        token_url = "https://oauth2.googleapis.com/token"
+        token_data = {
+            'code': code,
+            'client_id': os.getenv("GOOGLE_CLIENT_ID"),
+            'client_secret': os.getenv("GOOGLE_CLIENT_SECRET"),
+            'redirect_uri': "http://localhost:5000/auth/google/callback",
+            'grant_type': 'authorization_code'
+        }
+        token_response = requests.post(token_url, data=token_data)
+        token = token_response.json()
+        
+        # Get user info
+        userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+        headers = {'Authorization': f'Bearer {token.get("access_token")}'}
+        user_response = requests.get(userinfo_url, headers=headers)
+        user_info = user_response.json()
+    
+    print(f"Google user info: {user_info}")  # Debug print
+    
+    if not user_info:
+        return jsonify({"success": False, "message": "Failed to get user info"}), 400
+    
+    email = user_info.get('email')
+    name = user_info.get('name')
+    
+    print(f"Email: {email}, Name: {name}")  # Debug print
+    
+    # Check if user exists, create if not
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        user = User(name=name, email=email, password="google_oauth")
+        db.session.add(user)
+        db.session.commit()
+        print(f"Created new user: {name} ({email})")  # Debug print
+    else:
+        print(f"Found existing user: {user.name} ({user.email})")  # Debug print
+    
+    # Refresh tokens
+    refresh_daily_tokens(user)
+    
+    return f"""
+    <script>
+        localStorage.setItem('user_id', '{user.id}');
+        localStorage.setItem('user_name', '{user.name}');
+        localStorage.setItem('tokens', '{user.tokens}');
+        window.location.href = 'http://localhost:5173/home';
+    </script>
+    """
 
 
 def increment_daily_tokens():
