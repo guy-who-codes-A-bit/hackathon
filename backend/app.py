@@ -26,6 +26,8 @@ restaurants = [
     },
 ]
 
+def send_mail():
+    pass
 
 @app.route("/")
 def home():
