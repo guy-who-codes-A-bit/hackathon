@@ -30,8 +30,8 @@ export default function Home() {
   return (
     // gray background for outside the phone
     <div className="min-h-screen bg-[#f4fff4] flex justify-center items-center py-4">
-      {/* PHONE FRAME */}
-      <div className="relative w-full max-w-sm bg-white h-[90vh] rounded-3xl shadow-md flex flex-col overflow-hidden">
+      {/* PHONE FRAME (expands on larger screens) */}
+      <div className="relative w-full bg-white rounded-3xl shadow-md flex flex-col overflow-hidden max-w-sm h-[90vh] md:max-w-5xl md:h-[85vh] md:rounded-2xl">
         {/* TOP SECTION (non-scrollable) */}
         <div className="p-5 pb-0">
           {/* header */}
@@ -51,7 +51,7 @@ export default function Home() {
         </div>
 
         {/* stats */}
-        <div className="px-5 pb-5 flex gap-3">
+        <div className="px-5 pb-5 flex gap-3 md:grid md:grid-cols-3 md:gap-4">
           <div className="flex-1 border border-gray-200 rounded-xl p-3">
             <p className="text-sm text-gray-700">Meals Saved</p>
             <p className="text-2xl font-semibold text-gray-900">62</p>
@@ -59,6 +59,10 @@ export default function Home() {
           <div className="flex-1 border border-gray-200 rounded-xl p-3">
             <p className="text-sm text-gray-700">Active Restaurants</p>
             <p className="text-2xl font-semibold text-gray-900">15</p>
+          </div>
+          <div className="hidden md:block border border-gray-200 rounded-xl p-3">
+            <p className="text-sm text-gray-700">Nearby</p>
+            <p className="text-2xl font-semibold text-gray-900">8</p>
           </div>
         </div>
 
@@ -74,12 +78,12 @@ export default function Home() {
         </div>
 
         {/* SCROLLABLE LIST */}
-        <div className="flex-1 overflow-y-auto px-5 pb-24">
-          <div className="border border-gray-200 rounded-2xl p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto px-5 pb-24 md:pb-6">
+          <div className="border border-gray-200 rounded-2xl p-4 space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
             {filteredRestaurants.map((r) => (
               <div
                 key={r.id}
-                className="flex justify-between items-center py-2 border-b last:border-b-0 border-gray-100"
+                className="flex justify-between items-center py-2 border-b last:border-b-0 border-gray-100 md:border md:rounded-xl md:p-4 md:shadow-sm md:border-gray-200 md:gap-4 md:border-b-0"
               >
                 <div>
                   <p className="font-semibold text-gray-900">{r.name}</p>
@@ -105,7 +109,7 @@ export default function Home() {
             ))}
 
             {filteredRestaurants.length === 0 && (
-              <p className="text-center text-gray-500 py-4">
+              <p className="text-center text-gray-500 py-4 col-span-full">
                 No restaurants found matching “{searchTerm}”
               </p>
             )}
