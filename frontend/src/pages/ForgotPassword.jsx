@@ -11,7 +11,7 @@ export default function ForgotPassword() {
 
   const handleCodeChange = (index, value) => {
     if (value.length <= 1) {
-      const newCode = [...code]; 
+      const newCode = [...code];
       newCode[index] = value;
       setCode(newCode);
 
@@ -52,7 +52,7 @@ export default function ForgotPassword() {
         <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md">
           {/* Logo */}
           <div className="flex flex-col items-center space-y-2 mb-6">
-            <img src={logo} alt="RePlate Logo" className="w-20 h-20" />
+            <img src={logo} alt="RePlate Logo" className="w-65 h-40" />
           </div>
 
           {/* Title */}
@@ -100,7 +100,7 @@ export default function ForgotPassword() {
         <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md">
           {/* Logo */}
           <div className="flex flex-col items-center space-y-2 mb-6">
-            <img src={logo} alt="RePlate Logo" className="w-20 h-20" />
+            <img src={logo} alt="RePlate Logo" className="w-65 h-40" />
           </div>
 
           {/* Title */}
@@ -164,7 +164,7 @@ export default function ForgotPassword() {
         <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md">
           {/* Logo */}
           <div className="flex flex-col items-center space-y-2 mb-6">
-            <img src={logo} alt="RePlate Logo" className="w-20 h-20" />
+            <img src={logo} alt="RePlate Logo" className="w-65 h-40" />
           </div>
 
           {/* Title */}
@@ -228,7 +228,7 @@ export default function ForgotPassword() {
         <div className="w-full max-w-sm px-6 py-8 bg-white rounded-2xl shadow-md">
           {/* Logo */}
           <div className="flex flex-col items-center space-y-2 mb-6">
-            <img src={logo} alt="RePlate Logo" className="w-20 h-20" />
+            <img src={logo} alt="RePlate Logo" className="w-65 h-40" />
           </div>
 
           {/* Title */}
