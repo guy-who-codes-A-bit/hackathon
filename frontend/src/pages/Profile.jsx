@@ -5,6 +5,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
+
   return (
     <div className="min-h-screen bg-[#F4FFF4] flex flex-col pb-20">
       {/* Header Bar */}
@@ -12,8 +13,8 @@ export default function Profile() {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800">Profile</h1>
           <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
-            <span className="text-2xl">⭐</span>
-            <span className="text-lg font-bold text-amber-600">2</span>
+            <span className="text-2xl">⭐ </span>
+            <span className="text-lg font-bold text-amber-600">{user.tokens}</span>
           </div>
         </div>
       </div>
