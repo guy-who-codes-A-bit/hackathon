@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function Profile() {
   const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   return (
     <div className="min-h-screen bg-[#F4FFF4] flex flex-col pb-20">
@@ -35,13 +36,13 @@ export default function Profile() {
             </div>
 
             {/* User Info */}
-            <h2 className="text-xl font-bold text-gray-800 mb-1">John Doe</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-1">{user.name}</h2>
             <p className="text-gray-600 text-sm mb-1 flex items-center gap-1">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                 <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
               </svg>
-              contact@dscode.tech.com
+              {user.email || ""}
             </p>
             <p className="text-gray-500 text-sm flex items-center gap-1">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -71,17 +72,19 @@ export default function Profile() {
           {/* Action Buttons */}
           <div className="flex gap-3">
             <button
-  onClick={() => navigate("/profile/edit")}
-  className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 rounded-xl 
+              onClick={() => navigate("/profile/edit")}
+              className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 rounded-xl 
              hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
->
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-  </svg>
-  Edit Profile
-</button>
-            <button className="flex-1 bg-[#EF7D7D] text-white font-semibold py-3 rounded-xl 
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit Profile
+            </button>
+            <button
+              onClick={() => navigate("/login")}
+              className="flex-1 bg-[#EF7D7D] text-white font-semibold py-3 rounded-xl 
                                hover:bg-[#E56B6B] transition-all flex items-center justify-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}

@@ -11,9 +11,9 @@ export default function EditProfile() {
   const [email, setEmail] = useState("contact@dscode.tech.com");
   const [editEmail, setEditEmail] = useState(false);
   const [actualPassword, setActualPassword] = useState("123"); // ← example from DB
-const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  
+
 
   // ✅ NEW: independent state/toggle for NAME
   const [name, setName] = useState(user.name || "Andrew Tan");
@@ -51,12 +51,11 @@ const [showPassword, setShowPassword] = useState(false);
             </div>
             <input
               type="email"
-              value={email}
+              value={user.email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={!editEmail}
-              className={`w-full rounded-lg px-4 py-3 text-sm ${
-                editEmail ? "bg-white border border-gray-300" : "bg-gray-100"
-              }`}
+              className={`w-full rounded-lg px-4 py-3 text-sm ${editEmail ? "bg-white border border-gray-300" : "bg-gray-100"
+                }`}
             />
           </div>
 
@@ -74,38 +73,36 @@ const [showPassword, setShowPassword] = useState(false);
             </div>
             <input
               type="text"
-              value={name}
+              value={user.name}
               onChange={(e) => setName(e.target.value)}
               disabled={!editName}
-              className={`w-full rounded-lg px-4 py-3 text-sm ${
-                editName ? "bg-white border border-gray-300" : "bg-gray-100"
-              }`}
+              className={`w-full rounded-lg px-4 py-3 text-sm ${editName ? "bg-white border border-gray-300" : "bg-gray-100"
+                }`}
             />
           </div>
 
           {/* PASSWORD (reveal while editing) */}
           <div>
-  <div className="flex justify-between items-center mb-1">
-    <label className="text-sm font-medium text-gray-700">Password</label>
-    <button
-      type="button"
-      onClick={() => setShowPassword(v => !v)}
-      className="text-sm text-green-600"
-    >
-      {showPassword ? "lock" : "edit"}
-    </button>
-  </div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-sm font-medium text-gray-700">Password</label>
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="text-sm text-green-600"
+              >
+                {showPassword ? "lock" : "edit"}
+              </button>
+            </div>
 
-  <input
-    type={showPassword ? "text" : "password"}          // 👈 SWITCHES DISPLAY
-    value={actualPassword}                             // 👈 always stores real password
-    onChange={(e) => setActualPassword(e.target.value)}
-    disabled={!showPassword}                           // 👈 only editable when "edit" pressed
-    className={`w-full rounded-lg px-4 py-3 text-sm ${
-      showPassword ? "bg-white border border-gray-300" : "bg-gray-100"
-    }`}
-  />
-</div>
+            <input
+              type={showPassword ? "text" : "password"}          // 👈 SWITCHES DISPLAY
+              value={actualPassword}                             // 👈 always stores real password
+              onChange={(e) => setActualPassword(e.target.value)}
+              disabled={!showPassword}                           // 👈 only editable when "edit" pressed
+              className={`w-full rounded-lg px-4 py-3 text-sm ${showPassword ? "bg-white border border-gray-300" : "bg-gray-100"
+                }`}
+            />
+          </div>
 
         </div>
 

@@ -123,7 +123,10 @@ export default function Home() {
       {/* Header Bar */}
       <div className="bg-white shadow-sm px-6 py-4 sticky top-0 z-10">
         <div className="flex justify-between items-center">
-          <button onClick={handleProfileClick} className="focus:outline-none">
+          <button
+            onClick={handleProfileClick}
+            className="focus:outline-none hover:bg-gray-100 px-3 py-1 rounded transition"
+          >
             <h1 className="text-2xl font-bold text-gray-800">Profile</h1>
           </button>
           <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
