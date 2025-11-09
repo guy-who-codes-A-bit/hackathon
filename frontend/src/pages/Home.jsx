@@ -71,8 +71,11 @@ const dummyRestaurants = [
 
 export default function Home() {
   const [restaurants, setRestaurants] = useState([]);
+  const [restaurantCount, setRestaurantCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [userTokens, setUserTokens] = useState(0);
+  const [mealsSaved, setMealsSaved] = useState(62);
+  const [co2Saved, setCo2Saved] = useState(0);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -85,7 +88,8 @@ export default function Home() {
     const fetchData = async () => {
       try {
         const res = await apiRequest("/restaurants");
-        setRestaurants(res);
+        setRestaurants(res.restaurants || []);
+        setRestaurantCount(res.count || 0);
 
         // get user data from login
         const storedUser = localStorage.getItem("user");
@@ -93,6 +97,10 @@ export default function Home() {
           const parsed = JSON.parse(storedUser);
           setUserTokens(parsed.tokens || 0);
         }
+        const saved = localStorage.getItem("mealsSaved");
+        if (saved) setMealsSaved(parseInt(saved));
+        setCo2Saved((mealsSaved * 2.5).toFixed(1)); // 2.5kg CO2 per meal
+
       } catch (err) {
         console.error("Failed to fetch restaurants:", err);
       } finally {
@@ -142,18 +150,18 @@ export default function Home() {
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="bg-white rounded-2xl shadow-md p-4 text-center">
             <div className="text-3xl mb-1">🍱</div>
-            <p className="text-2xl font-bold text-[#6ECF68]">62</p>
+            <p className="text-2xl font-bold text-[#6ECF68]">{mealsSaved}</p>
             <p className="text-xs text-gray-500">Meals Saved</p>
           </div>
           <div className="bg-white rounded-2xl shadow-md p-4 text-center">
             <div className="text-3xl mb-1">🏪</div>
-            <p className="text-2xl font-bold text-[#6ECF68]">15</p>
+            <p className="text-2xl font-bold text-[#6ECF68]">{restaurantCount}</p>
             <p className="text-xs text-gray-500">Restaurants</p>
           </div>
           <div className="bg-white rounded-2xl shadow-md p-4 text-center">
-            <div className="text-3xl mb-1">📍</div>
-            <p className="text-2xl font-bold text-[#6ECF68]">9</p>
-            <p className="text-xs text-gray-500">Nearby</p>
+            <div className="text-3xl mb-1">🌱</div>
+            <p className="text-2xl font-bold text-[#6ECF68]">{co2Saved}</p>
+            <p className="text-xs text-gray-500">CO₂ kg</p>
           </div>
         </div>
 
